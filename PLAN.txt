@@ -1,0 +1,1059 @@
+FITNESS RPG — CLAUDE PROJECT PLAN
+=================================
+
+Document purpose
+----------------
+This document is the implementation brief for building a mobile fitness RPG with Claude. It should be kept in the project root and treated as the product and engineering source of truth. Build the application in controlled phases. Do not attempt to generate the entire product in one pass.
+
+Core implementation rule:
+
+Fitness functionality comes first. RPG elements should make training more motivating, but they must never slow down or interfere with logging a workout.
+
+The product should take inspiration from progression-fantasy concepts such as players, awakening, levels, ranks, quests, gates, classes, bosses, XP, and attributes, while using an original name, visual identity, story, artwork, terminology, and copy. Do not copy protected characters, logos, artwork, dialogue, or recognizable screen designs from Solo Leveling or any other property.
+
+
+1. PRODUCT VISION
+=================
+
+Working concept:
+
+“A fitness RPG where your real-world training determines your character progression.”
+
+The app is a serious workout tracker underneath and an RPG progression system on top. The core loop is:
+
+Quest -> Workout -> XP -> Level Up -> Attribute Growth -> Rank Up -> Harder Gates
+
+The product combines:
+
+- Fast, reliable workout logging
+- Workout templates presented as “Gates”
+- Exercise strength rankings
+- Per-workout Gate Clear rankings
+- Body-composition assessments
+- Player levels and XP
+- Hunter ranks from E through S
+- Automatically calculated fitness attributes
+- Daily and weekly quests
+- Personal-record detection
+- Progress analytics
+- Workout streaks and adherence
+- Later: classes, cosmetic inventory, boss challenges, friends, guilds, and raids
+
+The dashboard must answer four questions immediately:
+
+1. Who am I?
+2. How strong or fit am I?
+3. What should I do today?
+4. How close am I to my next milestone?
+
+Product hierarchy:
+
+Hunter Rank
+  -> Strength, Physique, Endurance, Discipline
+  -> Exercise Ranks and assessment data
+  -> Gates and workout performance
+  -> Gate Clear Rank
+
+Cadence rule:
+
+- Hunter Rank changes slowly.
+- Exercise Ranks change occasionally.
+- Gate Clear Rank changes every workout.
+
+This gives the user an achievable victory in every session without making long-term ranks meaningless.
+
+
+2. MVP SCOPE
+============
+
+Build only the following for V1.
+
+Authentication
+
+- Sign up
+- Login
+- Forgot password
+- Session persistence
+- User profile
+- Logout
+
+Awakening / onboarding
+
+- Age or date of birth
+- Sex, with an appropriate optional/prefer-not-to-say path
+- Height
+- Weight
+- Training experience
+- Primary fitness goal
+- Available training days
+- Gym or home training
+- Preferred workout duration
+- Optional current-lift baseline
+- Optional InBody/body-assessment upload
+- Manual body-composition entry
+- Initial assessment and rank reveal
+
+System / home
+
+- Player level
+- Current and required XP
+- Hunter Rank
+- Strength, Physique, Endurance, and Discipline scores
+- Today’s Gate
+- Daily quest summary
+- Workout streak
+- Main navigation
+
+Gates
+
+- Workout template library
+- Recommended and user-created workouts
+- Gate difficulty, chosen before training
+- Exercise list and targets
+- Estimated duration
+- Push, Pull, Legs, Upper, Lower, and Full Body starter gates
+
+Workout logger
+
+- Exercises and exercise navigation
+- Sets, reps, weight, and RPE
+- Warm-up and working-set distinction
+- Rest timer
+- Previous performance
+- Auto-populated previous set values
+- One-tap set completion
+- Workout persistence and resume
+- Exercise replacement and notes where practical
+- PR detection
+- Workout completion summary
+
+Ranking and progression
+
+- Permanent Exercise Rank: E, D, C, B, A, S
+- Per-session Exercise Performance Grade: E, D, C, B, A, S
+- Gate Difficulty, assigned before a workout
+- Gate Clear Rank, calculated after a workout
+- Player XP and levels
+- Hunter score and rank
+- Attribute scores
+- Streaks
+
+Quests
+
+- Daily quests
+- Weekly quests
+- Progress tracking
+- Completion and reward claiming
+- XP rewards
+
+Player screen and analytics
+
+- Level and Hunter Rank
+- Attributes
+- Exercise ranks
+- Personal records
+- Workout frequency, volume, and history
+- Bodyweight and strength progress
+- Achievements/titles may be basic in V1
+
+Out of scope until later versions
+
+- V2: avatars, cosmetics, inventory, classes, and Boss Gates
+- V3: friends, leaderboards, guilds, and Guild Raids
+- V4: adaptive programs and AI-generated quests
+- No pay-to-win equipment or purchased performance advantages
+
+
+3. RECOMMENDED TECH STACK
+=========================
+
+Mobile application
+
+- React Native
+- Expo
+- TypeScript with strict mode enabled
+
+Reasons: one codebase for iOS and Android, fast iteration, a mature ecosystem, and strong support from Claude for React and TypeScript work.
+
+Backend
+
+- Supabase
+- PostgreSQL database
+- Supabase Authentication
+- Supabase Storage for optional assessment files
+- Edge Functions only when trusted server-side logic is required
+- Row-Level Security on all user-owned tables
+
+Client architecture
+
+- Expo Router for navigation
+- Zustand for small, focused client-side state
+- TanStack Query for remote/server state and caching
+- React Hook Form plus Zod for validated forms
+- A currently maintained React Native chart library, selected only after checking current compatibility with the chosen Expo SDK
+
+Quality tooling
+
+- ESLint
+- Prettier
+- TypeScript compiler checks
+- Jest or Vitest-compatible unit testing based on current Expo support
+- React Native Testing Library for component tests
+- Expo-supported end-to-end testing solution later in the project
+
+Claude must verify current stable package versions and Expo compatibility before installation. It must not assume an old chart, testing, or navigation package is still maintained.
+
+
+4. PROJECT ARCHITECTURE
+=======================
+
+Use feature separation. Do not put business rules, scoring formulas, or database operations directly into screen components.
+
+Suggested structure:
+
+src/
+|-- app/
+|   |-- (auth)/
+|   |-- (onboarding)/
+|   |-- (tabs)/
+|   |   |-- system.tsx
+|   |   |-- gates.tsx
+|   |   |-- quests.tsx
+|   |   `-- player.tsx
+|   |-- workout/
+|   |-- exercise/
+|   `-- settings/
+|-- components/
+|   |-- ui/
+|   |-- system/
+|   |-- workout/
+|   |-- gate/
+|   |-- rankings/
+|   `-- charts/
+|-- features/
+|   |-- auth/
+|   |-- onboarding/
+|   |-- workouts/
+|   |-- exercises/
+|   |-- rankings/
+|   |-- quests/
+|   |-- progression/
+|   `-- body-composition/
+|-- services/
+|   |-- supabase/
+|   |-- ranking/
+|   `-- analytics/
+|-- stores/
+|-- hooks/
+|-- types/
+|-- utils/
+`-- constants/
+
+Architecture rules
+
+- Screens compose features and reusable components; they do not own domain formulas.
+- rankingEngine.ts contains pure ranking functions.
+- Progression and XP calculations must be pure, deterministic, and testable.
+- Database access goes through typed service/repository functions.
+- TanStack Query owns server state. Zustand must not duplicate the remote database cache.
+- Theme values come from tokens, never scattered hard-coded colors.
+- All measurements support metric first, with unit conversion designed for future imperial support.
+- Store canonical weight values in kilograms.
+- Handle loading, empty, offline, and error states explicitly.
+- Never trust client-supplied ownership fields; enforce ownership with database policies.
+
+
+5. DATABASE SCHEMA
+==================
+
+Use UUID primary keys, timestamptz timestamps, foreign keys, appropriate NOT NULL constraints, checks, and indexes. Add updated_at triggers where useful. The exact SQL may evolve, but preserve these concepts.
+
+profiles
+
+- id (references auth.users.id)
+- email
+- display_name
+- date_of_birth
+- sex
+- height_cm
+- current_weight_kg
+- experience_level
+- fitness_goal
+- training_days_per_week
+- training_location
+- preferred_workout_minutes
+- onboarding_completed
+- created_at
+- updated_at
+
+body_assessments
+
+- id
+- user_id
+- weight_kg
+- body_fat_percent
+- skeletal_muscle_mass_kg
+- body_fat_mass_kg
+- visceral_fat_level
+- inbody_score
+- assessment_date
+- source: manual, inbody, or other
+- source_file_path, nullable
+- created_at
+
+exercises
+
+- id
+- name
+- category
+- primary_muscle_group
+- secondary_muscle_groups
+- equipment
+- exercise_type: strength, bodyweight, cardio, or mobility
+- ranking_enabled
+- created_at
+
+workout_templates
+
+- id
+- user_id, nullable for system templates
+- name
+- description
+- estimated_duration_minutes
+- difficulty
+- is_system_template
+- created_at
+- updated_at
+
+workout_template_exercises
+
+- id
+- template_id
+- exercise_id
+- order_index
+- target_sets
+- target_reps_min
+- target_reps_max
+- target_rpe
+- rest_seconds
+
+workout_sessions
+
+- id
+- user_id
+- template_id, nullable
+- name
+- gate_difficulty
+- started_at
+- completed_at
+- duration_seconds
+- total_volume_kg
+- completion_score
+- progress_score
+- quality_score
+- gate_score
+- gate_clear_rank
+- xp_earned
+- status: active, completed, or abandoned
+- created_at
+- updated_at
+
+workout_exercises
+
+- id
+- session_id
+- exercise_id
+- order_index
+- exercise_score
+- exercise_rank_at_time
+- performance_grade
+- notes
+
+workout_sets
+
+- id
+- workout_exercise_id
+- set_number
+- weight_kg
+- reps
+- rpe
+- duration_seconds, nullable
+- distance_meters, nullable
+- is_warmup
+- is_completed
+- is_pr
+- estimated_1rm_kg
+- completed_at
+
+exercise_user_stats
+
+- user_id
+- exercise_id
+- best_weight_kg
+- best_reps
+- best_estimated_1rm_kg
+- best_volume_kg
+- rank_score
+- exercise_rank
+- qualifying_session_count
+- total_sessions
+- last_performed_at
+- updated_at
+- composite primary key or unique constraint on user_id plus exercise_id
+
+player_progression
+
+- user_id
+- level
+- current_xp
+- lifetime_xp
+- hunter_score
+- hunter_rank
+- strength_score
+- physique_score
+- endurance_score
+- discipline_score
+- current_streak_days
+- longest_streak_days
+- updated_at
+
+quests
+
+- id
+- name
+- description
+- type: daily, weekly, achievement, or special
+- requirement_type
+- requirement_value
+- xp_reward
+- gold_reward, retained for future use
+- active
+- created_at
+
+user_quests
+
+- id
+- user_id
+- quest_id
+- progress
+- completed
+- claimed
+- assigned_at
+- expires_at
+- completed_at
+- claimed_at
+
+personal_records
+
+- id
+- user_id
+- exercise_id
+- workout_set_id
+- record_type: weight, reps, estimated_1rm, or volume
+- previous_value
+- new_value
+- achieved_at
+
+Recommended indexes
+
+- workout_sessions(user_id, started_at desc)
+- workout_sets(workout_exercise_id, set_number)
+- workout_exercises(session_id, order_index)
+- body_assessments(user_id, assessment_date desc)
+- exercise_user_stats(user_id, exercise_id), unique
+- user_quests(user_id, assigned_at desc)
+- personal_records(user_id, exercise_id, achieved_at desc)
+
+Security requirements
+
+- Enable RLS on every user-owned table.
+- A user can read and write only rows tied to auth.uid().
+- System exercises, system templates, and active quest definitions are readable by authenticated users but writable only by trusted server/admin roles.
+- Storage paths for assessments must be scoped by user ID and protected by storage policies.
+- Critical reward claiming must be idempotent and preferably enforced in a transaction or trusted server function.
+
+
+6. RANKING AND PROGRESSION SYSTEMS
+==================================
+
+6.1 Shared rank thresholds
+
+- 0-19: E
+- 20-34: D
+- 35-49: C
+- 50-64: B
+- 65-79: A
+- 80-100: S
+
+Keep thresholds in configuration constants so they can be tuned without changing UI code.
+
+6.2 Estimated 1RM
+
+For conventional strength exercises, begin with the Epley estimate:
+
+estimated1RM = weight * (1 + reps / 30)
+
+Use only qualifying working sets in the 1-12 rep range for strength ranking. Warm-up sets, incomplete sets, invalid data, and implausible values must not affect rankings. Bodyweight and assisted exercises need their own strategy and should not silently use an inappropriate barbell formula.
+
+6.3 Permanent Exercise Rank
+
+Purpose: historical capability on a specific exercise.
+
+Inputs may include:
+
+- Best valid estimated 1RM
+- Bodyweight-relative strength
+- Sex and age where evidence-based normalization data is available
+- Exercise type
+- Performance percentile or validated reference table
+
+Target pipeline:
+
+Performance data -> Percentile/reference comparison -> Normalized score 0-100 -> Exercise Rank
+
+Do not invent authoritative population standards. Start with clearly labeled provisional thresholds or seed data, isolate them in configuration, and document how they will be calibrated.
+
+6.4 Workout Performance Grade
+
+Purpose: how the user performed today relative to their expected recent performance.
+
+This is separate from Permanent Exercise Rank.
+
+Example:
+
+- Permanent: Bench Press — B Rank
+- Today: Bench Press Performance — A Grade
+
+Use separate names in code: exerciseRank and performanceGrade.
+
+6.5 Gate Difficulty and Gate Clear Rank
+
+Gate Difficulty is assigned before training and represents the intended workout challenge.
+
+Gate Clear Rank is calculated after training and represents actual session quality.
+
+Never use these terms interchangeably.
+
+Initial Gate Score weights:
+
+- Exercise performance: 50%
+- Completion: 20%
+- Progress versus prior sessions: 15%
+- PRs: 10%
+- Training quality/RPE validity: 5%
+
+Example:
+
+gateScore =
+  performance * 0.50
+  + completion * 0.20
+  + progress * 0.15
+  + prScore * 0.10
+  + quality * 0.05
+
+Clamp every input and final result to 0-100. Define behavior for first-time workouts with no history. Do not punish new users for missing comparison data; renormalize available factors or use a documented neutral baseline.
+
+6.6 Rank validation and anti-inflation rules
+
+- Do not rank a user from one implausible set.
+- Require at least two valid working sets for a qualifying performance.
+- Reject impossible or clearly erroneous weights, reps, RPE, and time values.
+- Require major rank upgrades, especially A to S, to be demonstrated in at least two separate sessions.
+- Compare against recent history and flag abnormal jumps rather than automatically accepting them for rank progression.
+- Preserve raw logs even when a set is excluded from ranking, unless the user deletes it.
+- Explain why a performance did or did not qualify.
+
+6.7 Hunter Rank
+
+Hunter Rank combines long-term attributes:
+
+- Strength: 40%
+- Physique: 30%
+- Endurance: 15%
+- Discipline: 15%
+
+hunterScore =
+  strength * 0.40
+  + physique * 0.30
+  + endurance * 0.15
+  + discipline * 0.15
+
+Map the resulting 0-100 score to E-S. Keep the formula configurable and show users which attribute is limiting the next rank.
+
+6.8 Physique score
+
+Do not copy or rely only on the InBody score. A future physique model may use:
+
+- Muscle development: 40%
+- Healthy body composition: 30%
+- Muscle/segmental balance: 20%
+- Lean mass relative to height: 10%
+
+Do not reward endlessly lower body-fat percentages. Use healthy, non-punitive ranges. Treat physique results as estimates, avoid medical claims, and provide appropriate privacy and wellness language.
+
+6.9 Discipline score
+
+Calculate from:
+
+- Planned workouts completed
+- Training consistency
+- Current and long-term streak behavior
+- Long-term adherence
+
+Do not encourage unsafe “never miss a day” behavior. Scheduled rest days must not break a streak. Allow recovery, illness, and plan changes to be handled fairly.
+
+6.10 XP and levels
+
+Rank is not Level.
+
+- Rank represents demonstrated performance.
+- Level represents activity and account progression.
+
+Initial XP examples:
+
+- Complete a workout: +300 XP
+- Complete a valid working set: +10 XP
+- Earn a meaningful PR: +50 XP
+- Complete a daily quest: +100 XP
+- Complete a weekly quest: +500 XP
+- Gate clear bonus: +100 to +300 XP
+
+Do not award XP for every button press. Prevent duplicate rewards and repeated claim exploits.
+
+Initial level curve:
+
+xpRequiredForLevel = 100 * level^1.5
+
+Implement this as getXpRequiredForLevel(level), with economy constants outside the UI.
+
+
+7. UI AND DESIGN SYSTEM
+=======================
+
+Visual direction
+
+- Original dark science-fantasy/system interface
+- Clear, premium, restrained, and readable
+- RPG atmosphere through accents, motion, badges, and rewards
+- Fitness data remains the dominant content
+- Rank colors are accents, not full-screen floods
+- Respect reduced-motion and accessibility settings
+
+Core color tokens
+
+- Background: #070A0F
+- Surface 1: #0E141D
+- Surface 2: #111923
+- Primary electric blue: #3EA6FF
+- Accent blue-violet: #7B61FF
+- Primary text: #F4F7FA
+- Secondary text: #8B99AA
+- Success: #4ADE80
+- Danger: #FF4D5A
+
+Rank colors
+
+- E: Gray
+- D: Green
+- C: Cyan
+- B: Blue
+- A: Purple
+- S: Gold
+
+S Rank may use stronger glow or particles, but effects must remain performant and accessible.
+
+Reusable components to build first
+
+- SystemCard
+- RankBadge
+- XPBar
+- AttributeRow
+- GateCard
+- GateRankBadge
+- ExerciseRankBadge
+- StatChip
+- GlowButton
+- SystemHeader
+- SystemNotification
+- QuestCard
+- WorkoutSetRow
+- RestTimer
+- ProgressRing
+- PRBadge
+
+Home / System screen structure
+
+SYSTEM
+PLAYER STATUS
+Level and dominant Hunter Rank badge
+XP bar and current/required XP
+STR, PHY, END, DIS attribute rows
+TODAY’S GATE card
+Gate name, difficulty, muscle groups, duration, and intensity
+ENTER GATE action
+Workout streak and daily quest summary
+Bottom navigation: SYSTEM | GATES | START | QUESTS | PLAYER
+
+The main rank badge should dominate the hero area without hiding practical information.
+
+Active workout UX
+
+- Speed over visual effects
+- Complete a set with one tap
+- Edit weight, reps, and RPE quickly
+- Pre-fill the next set using prior set or previous-session values
+- Keep the current exercise, set table, rest timer, and next action visible
+- Autosave immediately and survive app restarts
+- Provide haptics and notifications without blocking input
+
+Required workout journey
+
+Home
+-> Today’s Gate
+-> Gate Details
+-> Enter Gate
+-> Active Workout
+-> Complete Set
+-> Optional PR/rank notification
+-> Next Exercise
+-> Finish Workout
+-> Gate calculation
+-> Gate Cleared
+-> Rewards
+-> Home
+
+Accessibility
+
+- Meet useful contrast standards.
+- Never communicate rank by color alone; always show the letter.
+- Support dynamic text where feasible.
+- Give controls accessible labels and adequate touch targets.
+- Respect reduced-motion preferences.
+- Do not use flashing effects.
+
+
+8. DEVELOPMENT PHASES
+=====================
+
+At the end of every phase, Claude must summarize changes, list commands run, report test results, note assumptions, and stop for review. Do not start the next phase automatically.
+
+PHASE 1 — Foundation
+
+- Initialize the Expo TypeScript project
+- Verify current Expo and package compatibility
+- Configure Expo Router
+- Add Supabase client configuration with safe environment handling
+- Configure Zustand
+- Configure TanStack Query
+- Add React Hook Form and Zod
+- Add linting, formatting, and type-check scripts
+- Create the folder architecture
+- Create theme tokens and primitive UI components
+- Add a minimal navigation shell and placeholder screens
+- Add README setup instructions and .env.example
+- Verify the app starts and quality checks pass
+
+PHASE 2 — Database
+
+- Create Supabase migrations
+- Add tables, constraints, foreign keys, indexes, and triggers
+- Enable RLS and create policies
+- Add storage policies if assessment uploads are included
+- Generate TypeScript database types
+- Seed approximately 30 common gym exercises across chest, back, legs, shoulders, arms, and core
+- Test ownership policies with at least two users
+
+PHASE 3 — Authentication
+
+- Splash/loading state
+- Login
+- Registration
+- Forgot password
+- Session persistence
+- Auth guards and logout
+- Friendly error handling
+
+PHASE 4 — Awakening onboarding
+
+- Welcome/System Initializing
+- Basic profile
+- Goal
+- Training experience
+- Equipment/location and schedule
+- Body statistics
+- Optional assessment
+- Initial calculation
+- Rank reveal
+- Persist all results
+
+PHASE 5 — System screen
+
+- Build the reusable design components
+- Implement the Home/System design using native components
+- Connect real profile and progression data
+- Add loading, empty, and error states
+- If a visual reference is provided, recreate its design language; never embed the screenshot itself
+
+PHASE 6 — Gate system
+
+- Gate list and cards
+- Gate details
+- Workout templates
+- Custom templates
+- Seed Push, Pull, Legs, Upper, Lower, and Full Body gates
+- Separate Gate Difficulty from eventual Gate Clear Rank
+
+PHASE 7 — Workout logger
+
+- Active workout state
+- Exercise navigation
+- Set tracking
+- Previous performance and smart defaults
+- Rest timer
+- Autosave, persistence, resume, and safe abandonment
+- Complete workout transaction
+- Prioritize reliability and one-tap completion
+
+PHASE 8 — PR engine
+
+- Weight PR
+- Rep PR
+- Estimated 1RM PR
+- Volume PR
+- Deduplicate PRs and prevent notification spam
+- Prioritize meaningful estimated-strength progress
+- Add tests
+
+PHASE 9 — Ranking engine
+
+- Estimated 1RM
+- Exercise score and Permanent Exercise Rank
+- Workout Performance Grade
+- Gate Score and Gate Clear Rank
+- Hunter attributes and rank
+- Validation and anti-inflation rules
+- Unit tests for thresholds, boundaries, invalid input, missing history, and rank upgrades
+- Do not proceed until all ranking tests pass
+
+PHASE 10 — Gate Cleared screen
+
+- Gate Cleared reveal
+- Clear rank and score
+- Per-exercise results
+- PRs, volume, duration, and completion
+- XP and rewards
+- Level-up state
+- Celebratory but accessible motion
+
+PHASE 11 — Quests and progression
+
+- Daily and weekly assignment
+- Progress updates from real workout events
+- Claim flow
+- XP ledger or idempotent transaction strategy
+- Level calculation
+- Streak rules that respect scheduled rest
+
+PHASE 12 — Player and analytics
+
+- Player overview
+- Attributes and rank explanation
+- Exercise rank list
+- PR history
+- Workout history
+- Weight, estimated 1RM, volume, and frequency charts
+- Monthly comparison
+
+PHASE 13 — Hardening and release preparation
+
+- Accessibility audit
+- Security and RLS audit
+- Offline/error/retry behavior
+- Performance profiling
+- Crash and analytics plan with privacy controls
+- Store assets and legal/privacy copy
+- Internal beta and feedback loop
+
+
+9. TESTING AND QUALITY REQUIREMENTS
+===================================
+
+Tests are part of each feature, not a final cleanup phase.
+
+Unit tests
+
+- Estimated 1RM boundaries and rep cap
+- Rank threshold boundaries
+- Gate weighting and clamping
+- Missing-history behavior
+- Major rank-up qualification
+- XP curve and multi-level gains
+- Duplicate reward prevention
+- PR type detection and deduplication
+- Streak/adherence calculations
+- Unit conversion
+
+Integration tests
+
+- Authentication session flow
+- Onboarding persistence
+- Start, autosave, resume, and finish workout
+- Completion updates stats, PRs, XP, quests, and progression once
+- Quest claim is idempotent
+- RLS blocks cross-user reads and writes
+
+Component tests
+
+- WorkoutSetRow editing and one-tap completion
+- RestTimer behavior
+- GateCard states
+- RankBadge labels and accessibility
+- Empty, loading, and error states
+
+End-to-end critical path
+
+Register -> Onboard -> Select Gate -> Complete workout -> See Gate Clear -> Receive XP -> View updated Player stats
+
+Quality gate for every phase
+
+- Type check passes
+- Lint passes
+- Relevant tests pass
+- No secrets committed
+- No obvious accessibility regressions
+- README and migration notes updated
+- Manual verification steps documented
+
+
+10. GIT AND DOCUMENTATION RULES
+===============================
+
+- Use a feature branch per phase or coherent feature.
+- Make small, descriptive commits using a consistent convention, for example:
+  feat(workout): persist active session
+  fix(ranking): clamp gate component scores
+  test(progression): cover multi-level XP gain
+- Do not commit directly to the protected main branch.
+- Do not rewrite, reset, or discard unrelated user changes.
+- Never commit .env files, API keys, service-role keys, tokens, or personal data.
+- Commit .env.example with names and safe descriptions only.
+- Keep migrations immutable after they are shared; add a new migration for later changes.
+- Update generated database types after schema changes.
+- Update README.md after setup, architecture, or command changes.
+- Maintain docs/ARCHITECTURE.md for boundaries and major decisions.
+- Maintain docs/RANKING_SYSTEM.md with formulas, assumptions, versions, and calibration notes.
+- Maintain docs/DATABASE.md with table purpose and RLS policy summaries.
+- Record important decisions in short ADRs under docs/decisions/.
+- Add comments for why, not for obvious code behavior.
+- Claude must inspect existing files before editing and preserve established project conventions.
+- Before each phase, Claude must state the exact scope and files it expects to touch.
+- After each phase, Claude must provide a concise handoff: files changed, tests run, open risks, and the next recommended phase.
+
+
+11. MASTER CLAUDE PROMPT
+========================
+
+Copy the following prompt into Claude at the start of the project. Attach this project-plan file and any approved visual references.
+
+--- BEGIN MASTER PROMPT ---
+
+You are the lead mobile engineer for an original fitness RPG. Read FITNESS_RPG_CLAUDE_PROJECT_PLAN.txt completely before making changes and treat it as the product and engineering source of truth.
+
+The core product rule is: fitness functionality comes first. RPG elements enhance motivation but must never slow down or interfere with logging a workout. This is an original product inspired by general progression-fantasy mechanics. Do not copy protected characters, names, artwork, logos, dialogue, or recognizable UI from Solo Leveling or any other property.
+
+Build the application phase by phase using React Native, Expo, TypeScript, Expo Router, Supabase, Zustand, TanStack Query, React Hook Form, and Zod. Verify current package compatibility before installing dependencies.
+
+Engineering rules:
+
+1. Inspect the repository and existing documentation before editing.
+2. Work only on the phase I explicitly request. Do not begin later phases.
+3. State your short implementation plan and expected files before changing code.
+4. Preserve existing conventions and unrelated changes.
+5. Keep screens thin. Put ranking, progression, validation, and data access in testable domain/services modules.
+6. Keep Exercise Rank, Workout Performance Grade, Gate Difficulty, Gate Clear Rank, and Player Level as distinct concepts.
+7. Use strict TypeScript and avoid any unless it is unavoidable and documented.
+8. Use typed Supabase access, secure environment variables, and RLS for every user-owned table.
+9. Never expose or commit secrets. Never use a Supabase service-role key in the mobile client.
+10. Design for autosave, interruption, retries, missing history, and offline/error states.
+11. Build accessible reusable components from theme tokens. Do not hard-code theme values throughout screens.
+12. Add or update tests with every business rule. Ranking work cannot be considered complete until all ranking tests pass.
+13. Do not invent authoritative fitness standards. Label provisional scoring data, isolate it in configuration, and document calibration assumptions.
+14. Avoid medical claims, harmful body-composition incentives, and streak mechanics that punish healthy rest.
+15. Use migrations for database changes and document RLS policies.
+
+At the end of the requested phase:
+
+- Run the formatter, type checker, linter, and relevant tests.
+- Verify the app or feature manually where possible.
+- Summarize what changed.
+- List commands and test results.
+- Identify assumptions, known limitations, and required configuration.
+- Recommend the next phase, but stop and wait for approval.
+
+If the repository state conflicts with this plan, do not silently overwrite it. Explain the conflict and choose the smallest safe implementation consistent with the requested phase.
+
+Confirm that you understand the plan, then wait for my phase-specific prompt unless I included it in the same message.
+
+--- END MASTER PROMPT ---
+
+
+12. FIRST PHASE 1 PROMPT FOR CLAUDE
+==================================
+
+After Claude has read the master prompt and this file, send the following:
+
+--- BEGIN PHASE 1 PROMPT ---
+
+Implement PHASE 1 — Foundation only.
+
+First inspect the current repository and report what already exists. Then create the smallest clean foundation for the fitness RPG described in FITNESS_RPG_CLAUDE_PROJECT_PLAN.txt.
+
+Required outcomes:
+
+1. Initialize or validate an Expo React Native project with strict TypeScript.
+2. Verify and use versions compatible with the current stable Expo SDK.
+3. Configure Expo Router and create route groups for authentication, onboarding, tabs, workout, exercise, and settings.
+4. Add a minimal tab navigation shell for System, Gates, Start, Quests, and Player. Placeholder content is enough; do not build finished feature screens.
+5. Configure a typed Supabase browser/client module using EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY. Add a safe .env.example. Do not include real credentials.
+6. Add TanStack Query at the application root.
+7. Add a small, example Zustand store only if it proves the intended client-state pattern; do not create a monolithic global store.
+8. Add React Hook Form and Zod dependencies for future validated forms.
+9. Configure formatting, linting, and type-check scripts.
+10. Create the feature-oriented src structure from the project plan, adapting it only where Expo Router requires a different route location. Document any adaptation.
+11. Create theme tokens for colors, spacing, typography, radius, shadows/glow, and rank colors.
+12. Create only the foundational UI primitives needed to prove the theme, such as Screen, Text, Button, Card, and RankBadge.
+13. Add a simple foundation screen that demonstrates the tokens and components without pretending feature data is implemented.
+14. Add README instructions for prerequisites, installation, environment variables, start commands, checks, and the folder architecture.
+15. Add at least basic tests for the theme/rank mapping or another pure foundational rule, using a test setup compatible with the project.
+
+Constraints:
+
+- Do not create the Supabase schema or migrations yet; that is Phase 2.
+- Do not implement authentication behavior; that is Phase 3.
+- Do not build onboarding, finished screens, ranking formulas, quests, workout logging, or mock backend data.
+- Do not add animation, charts, or large UI libraries in this phase.
+- Do not use copyrighted names or assets.
+- Do not commit secrets.
+- Do not overwrite unrelated repository work.
+
+Before editing, show a concise plan and expected file changes. Then implement the phase. At completion, run formatting, type checking, linting, tests, and an Expo configuration/startup check where practical. Report exact results, remaining setup required from me, and stop without starting Phase 2.
+
+--- END PHASE 1 PROMPT ---
+
+
+13. DEFINITION OF MVP SUCCESS
+=============================
+
+The MVP is successful when a new user can:
+
+1. Create an account.
+2. Complete Awakening onboarding.
+3. See a meaningful System dashboard.
+4. Choose or create a Gate.
+5. Log a complete workout quickly, including interruptions and resume.
+6. Receive accurate PR, performance, Gate Clear, and XP results exactly once.
+7. See updated quests, exercise ranks, attributes, history, and analytics.
+8. Understand the difference between Level, Hunter Rank, Exercise Rank, performance grade, Gate Difficulty, and Gate Clear Rank.
+9. Use the app without RPG effects getting in the way of training.
+
+End of document.
