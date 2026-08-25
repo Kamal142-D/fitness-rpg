@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base theme applied before Compose takes over. Dark-first: matches the
+         app background (#070A0F) so there is no white flash on launch. -->
+    <style name="Theme.FitnessRPG" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/app_background</item>
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

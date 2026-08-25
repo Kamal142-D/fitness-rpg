@@ -43,3 +43,16 @@ example
 # generated native folders
 /ios
 /android
+
+# Android signing keystore (KEEP SAFE, never commit)
+*.keystore
+
+# Built release artifacts (APKs) — distributed via GitHub Releases, not committed
+release-artifacts/
+
+# Workspace-local Android/Gradle build caches
+/.gradle-user/
+/.android-user/
+
+# Release binaries belong in GitHub Releases, not source control
+/release/*.apk

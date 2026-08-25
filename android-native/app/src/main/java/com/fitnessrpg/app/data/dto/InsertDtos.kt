@@ -1,0 +1,62 @@
+package com.fitnessrpg.app.data.dto
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/** Insert/update bodies for the tables the client writes to directly. */
+
+@Serializable
+data class WorkoutTemplateInsertDto(
+    @SerialName("user_id") val userId: String,
+    val name: String,
+    val difficulty: String,
+    @SerialName("is_system_template") val isSystemTemplate: Boolean,
+    @SerialName("estimated_duration_minutes") val estimatedDurationMinutes: Int,
+    val description: String,
+)
+
+@Serializable
+data class TemplateExerciseInsertDto(
+    @SerialName("template_id") val templateId: String,
+    @SerialName("exercise_id") val exerciseId: String,
+    @SerialName("order_index") val orderIndex: Int,
+    @SerialName("target_sets") val targetSets: Int,
+    @SerialName("target_reps_min") val targetRepsMin: Int,
+    @SerialName("target_reps_max") val targetRepsMax: Int,
+    @SerialName("target_rpe") val targetRpe: Int,
+    @SerialName("rest_seconds") val restSeconds: Int,
+)
+
+@Serializable
+data class ProfileOnboardingUpdateDto(
+    @SerialName("display_name") val displayName: String?,
+    @SerialName("date_of_birth") val dateOfBirth: String?,
+    val sex: String?,
+    @SerialName("height_cm") val heightCm: Double?,
+    @SerialName("current_weight_kg") val currentWeightKg: Double?,
+    @SerialName("experience_level") val experienceLevel: String?,
+    @SerialName("fitness_goal") val fitnessGoal: String?,
+    @SerialName("training_days_per_week") val trainingDaysPerWeek: Int?,
+    @SerialName("training_location") val trainingLocation: String?,
+    @SerialName("preferred_workout_minutes") val preferredWorkoutMinutes: Int?,
+    @SerialName("onboarding_completed") val onboardingCompleted: Boolean,
+)
+
+@Serializable
+data class ProgressionInitUpdateDto(
+    @SerialName("strength_score") val strengthScore: Double,
+    @SerialName("physique_score") val physiqueScore: Double,
+    @SerialName("endurance_score") val enduranceScore: Double,
+    @SerialName("discipline_score") val disciplineScore: Double,
+    @SerialName("hunter_score") val hunterScore: Double,
+    @SerialName("hunter_rank") val hunterRank: String,
+)
+
+@Serializable
+data class BodyAssessmentInsertDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("weight_kg") val weightKg: Double?,
+    @SerialName("body_fat_percent") val bodyFatPercent: Double?,
+    @SerialName("skeletal_muscle_mass_kg") val skeletalMuscleMassKg: Double?,
+    val source: String,
+)
