@@ -15,6 +15,11 @@ data class PlayerProgression(
     val hunterRank: Rank,
     val currentStreakDays: Int,
     val longestStreakDays: Int,
+    val hunterRankProvisional: Boolean = true,
+    val hunterRankConfidence: String = "low",
+    val hunterRankCap: Rank? = Rank.C,
+    val hunterRankReasons: List<String> = emptyList(),
+    val assessmentUpdateRequired: Boolean = false,
 )
 
 /** The user's profile (mirrors `profiles`). Nullable fields are unset pre-onboarding. */

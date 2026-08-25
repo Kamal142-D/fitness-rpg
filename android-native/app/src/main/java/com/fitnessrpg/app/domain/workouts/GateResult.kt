@@ -5,6 +5,7 @@ import com.fitnessrpg.app.domain.pr.RecordType
 import com.fitnessrpg.app.domain.progression.WorkoutXpInput
 import com.fitnessrpg.app.domain.progression.xpForWorkout
 import com.fitnessrpg.app.domain.rank.Rank
+import com.fitnessrpg.app.domain.gates.GateDifficultyResult
 import com.fitnessrpg.app.domain.ranking.GateScoreInput
 import com.fitnessrpg.app.domain.ranking.completionScore
 import com.fitnessrpg.app.domain.ranking.computeGateScore
@@ -34,6 +35,7 @@ data class GateResult(
     val progressScore: Double?,
     val xpEarned: Int,
     val perExercise: List<PerExerciseResult>,
+    val difficulty: GateDifficultyResult? = null,
 )
 
 fun computeGateResult(
@@ -41,6 +43,7 @@ fun computeGateResult(
     priorStats: Map<String, PriorStat?>,
     aggregates: CompletionAggregates,
     prRecordTypes: List<RecordType>,
+    difficulty: GateDifficultyResult? = null,
 ): GateResult {
     val perExercise = mutableListOf<PerExerciseResult>()
     val rpes = mutableListOf<Double?>()
@@ -97,5 +100,6 @@ fun computeGateResult(
         progressScore = progress,
         xpEarned = xpEarned,
         perExercise = perExercise,
+        difficulty = difficulty,
     )
 }

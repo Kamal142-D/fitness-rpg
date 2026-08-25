@@ -28,8 +28,8 @@ class GateResultTest {
     fun `computes gate score, clear rank, grades and XP with no history`() {
         val r = computeGateResult(payload(), emptyMap(), aggregates, emptyList())
         assertEquals(100.0, r.completionScore, 1e-9)
-        // (60*.5 + 100*.2 + 50*.1 + 60*.05) / .85 = 58 / .85 ~= 68.24 -> A
-        assertEquals(68.24, r.gateScore, 0.05)
+        // V2: target 30%, completion 35%, progress 25%, PR 10% (missing progress renormalized).
+        assertEquals(77.33, r.gateScore, 0.05)
         assertEquals(Rank.A, r.gateClearRank)
         assertEquals(Rank.B, r.perExercise[0].performanceGrade) // neutral 60 -> B
         // 300 base + 2*10 sets + 0 PRs + 250 (A bonus) = 570

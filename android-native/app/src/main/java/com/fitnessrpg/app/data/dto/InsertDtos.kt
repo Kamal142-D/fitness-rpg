@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 data class WorkoutTemplateInsertDto(
     @SerialName("user_id") val userId: String,
     val name: String,
-    val difficulty: String,
+    val difficulty: String? = null,
     @SerialName("is_system_template") val isSystemTemplate: Boolean,
     @SerialName("estimated_duration_minutes") val estimatedDurationMinutes: Int,
     val description: String,
@@ -25,6 +25,12 @@ data class TemplateExerciseInsertDto(
     @SerialName("target_reps_max") val targetRepsMax: Int,
     @SerialName("target_rpe") val targetRpe: Int,
     @SerialName("rest_seconds") val restSeconds: Int,
+)
+
+@Serializable
+data class WorkoutTemplateNameUpdateDto(
+    val name: String,
+    @SerialName("estimated_duration_minutes") val estimatedDurationMinutes: Int,
 )
 
 @Serializable
@@ -50,6 +56,11 @@ data class ProgressionInitUpdateDto(
     @SerialName("discipline_score") val disciplineScore: Double,
     @SerialName("hunter_score") val hunterScore: Double,
     @SerialName("hunter_rank") val hunterRank: String,
+    @SerialName("hunter_rank_provisional") val hunterRankProvisional: Boolean,
+    @SerialName("hunter_rank_confidence") val hunterRankConfidence: String,
+    @SerialName("hunter_rank_cap") val hunterRankCap: String?,
+    @SerialName("hunter_rank_reasons") val hunterRankReasons: List<String>,
+    @SerialName("assessment_update_required") val assessmentUpdateRequired: Boolean,
 )
 
 @Serializable
@@ -58,5 +69,26 @@ data class BodyAssessmentInsertDto(
     @SerialName("weight_kg") val weightKg: Double?,
     @SerialName("body_fat_percent") val bodyFatPercent: Double?,
     @SerialName("skeletal_muscle_mass_kg") val skeletalMuscleMassKg: Double?,
+    @SerialName("waist_cm") val waistCm: Double?,
     val source: String,
+)
+
+@Serializable
+data class ConditioningAssessmentInsertDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("test_type") val testType: String,
+    val result: Double,
+    val score: Double?,
+)
+
+@Serializable
+data class StrengthAssessmentSetInsertDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("exercise_id") val exerciseId: String,
+    val variation: String,
+    val equipment: String,
+    @SerialName("weight_kg") val weightKg: Double,
+    val reps: Int,
+    @SerialName("weight_mode") val weightMode: String?,
+    val rpe: Double?,
 )

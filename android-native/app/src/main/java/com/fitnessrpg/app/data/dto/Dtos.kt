@@ -28,12 +28,24 @@ data class ExerciseDto(
     val equipment: String? = null,
     @SerialName("exercise_type") val exerciseType: String? = null,
     @SerialName("ranking_enabled") val rankingEnabled: Boolean = false,
+    val aliases: List<String>? = null,
+    @SerialName("body_part") val bodyPart: String? = null,
+    @SerialName("target_muscle") val targetMuscle: String? = null,
+    val instructions: List<String>? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("video_url") val videoUrl: String? = null,
+    val source: String? = null,
+    @SerialName("source_id") val sourceId: String? = null,
+    val attribution: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
 ) {
     fun toDomain() = Exercise(
         id = id, name = name, category = category, primaryMuscleGroup = primaryMuscleGroup,
         secondaryMuscleGroups = secondaryMuscleGroups ?: emptyList(), equipment = equipment,
         exerciseType = exerciseType, rankingEnabled = rankingEnabled, createdAt = createdAt,
+        aliases = aliases ?: emptyList(), bodyPart = bodyPart, targetMuscle = targetMuscle,
+        instructions = instructions ?: emptyList(), imageUrl = imageUrl, videoUrl = videoUrl,
+        source = source, sourceId = sourceId, attribution = attribution,
     )
 }
 
@@ -46,6 +58,13 @@ data class WorkoutTemplateDto(
     @SerialName("estimated_duration_minutes") val estimatedDurationMinutes: Int? = null,
     val difficulty: String? = null,
     @SerialName("is_system_template") val isSystemTemplate: Boolean = false,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    @SerialName("last_difficulty_score") val lastDifficultyScore: Double? = null,
+    @SerialName("last_difficulty_rank") val lastDifficultyRank: String? = null,
+    @SerialName("average_difficulty_score") val averageDifficultyScore: Double? = null,
+    @SerialName("average_difficulty_rank") val averageDifficultyRank: String? = null,
+    @SerialName("times_completed") val timesCompleted: Int = 0,
+    @SerialName("last_completed_at") val lastCompletedAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
 ) {
@@ -53,6 +72,10 @@ data class WorkoutTemplateDto(
         id = id, userId = userId, name = name, description = description,
         estimatedDurationMinutes = estimatedDurationMinutes, difficulty = difficulty,
         isSystemTemplate = isSystemTemplate, createdAt = createdAt, updatedAt = updatedAt,
+        deletedAt = deletedAt, lastDifficultyScore = lastDifficultyScore,
+        lastDifficultyRank = lastDifficultyRank, averageDifficultyScore = averageDifficultyScore,
+        averageDifficultyRank = averageDifficultyRank, timesCompleted = timesCompleted,
+        lastCompletedAt = lastCompletedAt,
     )
 }
 
@@ -113,6 +136,11 @@ data class ProgressionDto(
     @SerialName("hunter_rank") val hunterRank: String? = null,
     @SerialName("current_streak_days") val currentStreakDays: Int = 0,
     @SerialName("longest_streak_days") val longestStreakDays: Int = 0,
+    @SerialName("hunter_rank_provisional") val hunterRankProvisional: Boolean = true,
+    @SerialName("hunter_rank_confidence") val hunterRankConfidence: String = "low",
+    @SerialName("hunter_rank_cap") val hunterRankCap: String? = "C",
+    @SerialName("hunter_rank_reasons") val hunterRankReasons: List<String> = emptyList(),
+    @SerialName("assessment_update_required") val assessmentUpdateRequired: Boolean = false,
 ) {
     fun toDomain() = PlayerProgression(
         level = level, currentXp = currentXp, lifetimeXp = lifetimeXp,
@@ -120,6 +148,11 @@ data class ProgressionDto(
         enduranceScore = enduranceScore, disciplineScore = disciplineScore,
         hunterScore = hunterScore, hunterRank = rankOrDefault(hunterRank),
         currentStreakDays = currentStreakDays, longestStreakDays = longestStreakDays,
+        hunterRankProvisional = hunterRankProvisional,
+        hunterRankConfidence = hunterRankConfidence,
+        hunterRankCap = com.fitnessrpg.app.domain.rank.rankOrNull(hunterRankCap),
+        hunterRankReasons = hunterRankReasons,
+        assessmentUpdateRequired = assessmentUpdateRequired,
     )
 }
 

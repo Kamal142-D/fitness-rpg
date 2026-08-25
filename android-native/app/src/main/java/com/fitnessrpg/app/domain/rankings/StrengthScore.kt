@@ -47,15 +47,8 @@ private fun sexScale(sex: String?): Double = when (sex) {
     else -> 0.86
 }
 
-/** Barbell-equivalent factor for equipment (provisional, tunable). */
-private fun equipmentFactor(equipment: Equipment): Double = when (equipment) {
-    Equipment.BARBELL -> 1.0
-    Equipment.SMITH_MACHINE -> 0.95
-    Equipment.DUMBBELL -> 0.90
-    Equipment.MACHINE -> 0.85
-    Equipment.BODYWEIGHT -> 1.0
-    Equipment.OTHER -> 0.85
-}
+private fun isGloballyBenchmarkable(equipment: Equipment): Boolean =
+    equipment == Equipment.BARBELL || equipment == Equipment.DUMBBELL || equipment == Equipment.BODYWEIGHT
 
 /** Map a catalog exercise name (or a bare movement key) to a standard movement. */
 private val NAME_TO_MOVEMENT: Map<String, String> = mapOf(
@@ -99,10 +92,10 @@ private fun relativeToScore(relative: Double, movement: String, sex: String?): D
 
 fun scoreStrengthMovement(input: StrengthAssessmentInput, bodyweightKg: Double, sex: String?): Double? {
     val movement = movementForExerciseId(input.exerciseId) ?: return null
-    if (bodyweightKg <= 0.0 || input.weightKg <= 0.0 || input.reps < 1) return null
+    if (!isGloballyBenchmarkable(input.equipment) || bodyweightKg <= 0.0 || input.weightKg <= 0.0 || input.reps !in 1..50) return null
 
     val repsForRanking = input.reps.coerceIn(1, 12)
-    val est1rm = calculateEstimated1RM(totalLoadKg(input), repsForRanking) * equipmentFactor(input.equipment)
+    val est1rm = calculateEstimated1RM(totalLoadKg(input), repsForRanking)
     return relativeToScore(est1rm / bodyweightKg, movement, sex)
 }
 
@@ -140,5 +133,26 @@ fun computeStrengthScoreFromEstimated1RMs(
 /** Average with a strong weakest-movement penalty (never `max`). */
 private fun combineMovementScores(scores: List<Double>): Double? {
     if (scores.isEmpty()) return null
-    return clampScore(scores.average() * 0.6 + scores.min() * 0.4)
+    return clampScore(scores.average() * 0.8 + scores.min() * 0.2)
+}
+
+fun computeStrengthRank(inputs: List<StrengthAssessmentInput>, bodyweightKg: Double, sex: String?, qualifyingSessionCount: Int = 1, todayEpochDay: Long? = null): StrengthRankResult {
+    val movementScores = inputs.mapNotNull { input ->
+        val movement = movementForExerciseId(input.exerciseId)
+        val score = scoreStrengthMovement(input, bodyweightKg, sex)
+        if (movement != null && score != null) movement to score else null
+    }.groupBy({ it.first }, { it.second }).mapValues { it.value.max() }
+    val score = combineMovementScores(movementScores.values.toList())
+    val count = movementScores.size
+    val reasons = mutableListOf<String>()
+    if (inputs.any { it.reps !in 1..50 }) reasons += "Repetitions are missing or invalid."
+    if (inputs.any { !isGloballyBenchmarkable(it.equipment) }) reasons += "Machine, Smith and cable loads use Personal Performance Tier, not global benchmarks."
+    if (count < 2) reasons += "At least two major movement patterns are required for a validated rank."
+    val stale = todayEpochDay != null && inputs.any { it.performedAtEpochDay?.let { day -> todayEpochDay - day > 60 } != false }
+    if (stale) reasons += "Strength assessment update recommended."
+    val cap = when { count == 0 -> null; stale -> Rank.C; count == 1 -> Rank.C; count == 2 -> Rank.B; qualifyingSessionCount < 2 -> Rank.A; else -> Rank.S }
+    var rank = score?.let { com.fitnessrpg.app.domain.rank.scoreToRank(it) }
+    if (rank != null && cap != null && rank.ordinal > cap.ordinal) rank = cap
+    val confidence = when { stale || count < 2 -> AssessmentConfidence.LOW; count < 3 || qualifyingSessionCount < 2 -> AssessmentConfidence.MEDIUM; else -> AssessmentConfidence.HIGH }
+    return StrengthRankResult(score, rank, movementScores, cap, count < 3, confidence, reasons)
 }

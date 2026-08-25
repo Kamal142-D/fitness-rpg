@@ -83,6 +83,10 @@ fun validateStep(step: StepId, d: OnboardingDraft): FieldErrors {
             if (d.bodyFatPercent != null && !inRange(d.bodyFatPercent, 3.0, 60.0)) {
                 e["bodyFatPercent"] = "Body fat should be between 3 and 60%"
             }
+            if (d.waistCm != null && !inRange(d.waistCm, 40.0, 200.0)) e["waistCm"] = "Waist should be between 40 and 200 cm"
+            if (d.skeletalMuscleMassKg != null && d.currentWeightKg != null && d.skeletalMuscleMassKg > d.currentWeightKg) {
+                e["skeletalMuscleMassKg"] = "Skeletal muscle mass cannot exceed body weight"
+            }
             if (d.skeletalMuscleMassKg != null && !inRange(d.skeletalMuscleMassKg, 10.0, 80.0)) {
                 e["skeletalMuscleMassKg"] = "Muscle mass should be between 10 and 80 kg"
             }

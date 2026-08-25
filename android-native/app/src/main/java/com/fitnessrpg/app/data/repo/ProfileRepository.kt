@@ -2,6 +2,8 @@ package com.fitnessrpg.app.data.repo
 
 import com.fitnessrpg.app.data.auth.friendlyAuthError
 import com.fitnessrpg.app.data.dto.BodyAssessmentInsertDto
+import com.fitnessrpg.app.data.dto.ConditioningAssessmentInsertDto
+import com.fitnessrpg.app.data.dto.StrengthAssessmentSetInsertDto
 import com.fitnessrpg.app.data.dto.ProfileDto
 import com.fitnessrpg.app.data.dto.ProfileOnboardingUpdateDto
 import com.fitnessrpg.app.data.dto.ProgressionInitUpdateDto
@@ -54,16 +56,28 @@ class ProfileRepository {
         // Store only body fat + weight. We deliberately do NOT write the user's
         // (total) "Muscle Mass" into the skeletal_muscle_mass_kg column — they are
         // different measurements. SMM stays null unless a true SMM value is known.
-        if (draft.bodyFatPercent != null) {
+        if (draft.bodyFatPercent != null || draft.waistCm != null || draft.skeletalMuscleMassKg != null) {
             db.from("body_assessments").insert(
                 BodyAssessmentInsertDto(
                     userId = userId,
                     weightKg = draft.currentWeightKg,
                     bodyFatPercent = draft.bodyFatPercent,
-                    skeletalMuscleMassKg = null,
-                    source = "manual",
+                    skeletalMuscleMassKg = draft.skeletalMuscleMassKg,
+                    waistCm = draft.waistCm,
+                    source = draft.bodyAssessmentSource,
                 ),
             )
+        }
+
+        if (draft.conditioningTestType != null && draft.conditioningResult != null) {
+            db.from("conditioning_assessments").insert(
+                ConditioningAssessmentInsertDto(userId, draft.conditioningTestType, draft.conditioningResult, hunter.conditioningScore),
+            )
+        }
+        if (draft.strengthAssessmentSets.isNotEmpty()) {
+            db.from("strength_assessment_sets").insert(draft.strengthAssessmentSets.map { set ->
+                StrengthAssessmentSetInsertDto(userId, set.exerciseId, set.variation, set.equipment.name.lowercase(), set.weightKg, set.reps, set.dumbbellWeightMode?.let { if (it.name == "PER_HAND") "per_hand" else "total" }, set.rpe)
+            })
         }
 
         db.from("player_progression").update(
@@ -74,6 +88,11 @@ class ProfileRepository {
                 disciplineScore = 0.0,
                 hunterScore = hunter.hunterScore,
                 hunterRank = hunter.rank.name,
+                hunterRankProvisional = hunter.provisional,
+                hunterRankConfidence = hunter.confidence.name.lowercase(),
+                hunterRankCap = hunter.rankCap?.name,
+                hunterRankReasons = hunter.reasons,
+                assessmentUpdateRequired = hunter.provisional,
             ),
         ) { filter { eq("user_id", userId) } }
 

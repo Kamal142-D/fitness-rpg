@@ -5,23 +5,23 @@ package com.fitnessrpg.app.domain.ranking
  * and UI (PLAN.txt §6). Values marked PROVISIONAL are seed estimates. Bump
  * [RANKING_VERSION] when the math or these constants change.
  */
-const val RANKING_VERSION = 1
+const val RANKING_VERSION = 2
 
 /** Gate Score component weights (PLAN.txt §6.5). Must sum to 1. */
 object GateWeights {
-    const val PERFORMANCE = 0.5
-    const val COMPLETION = 0.2
-    const val PROGRESS = 0.15
+    const val PERFORMANCE = 0.30
+    const val COMPLETION = 0.35
+    const val PROGRESS = 0.25
     const val PR = 0.1
-    const val QUALITY = 0.05
+    const val QUALITY = 0.0
 }
 
 /** Hunter Rank attribute weights (PLAN.txt §6.7). Must sum to 1. */
 object HunterWeights {
     const val STRENGTH = 0.4
-    const val PHYSIQUE = 0.3
-    const val ENDURANCE = 0.15
-    const val DISCIPLINE = 0.15
+    const val PHYSIQUE = 0.35
+    const val ENDURANCE = 0.25
+    const val DISCIPLINE = 0.0
 }
 
 /** Neutral score used where a factor has no data yet (don't punish new users). */
@@ -72,12 +72,9 @@ private val SEX_SCALE = mapOf("male" to 1.0, "female" to 0.72, "neutral" to 0.86
 /** Map an exercise name to a strength-standard movement, or null if unranked. */
 private val EXERCISE_MOVEMENT: Map<String, Movement> = mapOf(
     "Barbell Bench Press" to Movement.BENCH,
-    "Dumbbell Bench Press" to Movement.BENCH,
-    "Incline Dumbbell Press" to Movement.BENCH,
     "Barbell Back Squat" to Movement.SQUAT,
     "Front Squat" to Movement.SQUAT,
     "Deadlift" to Movement.DEADLIFT,
-    "Romanian Deadlift" to Movement.DEADLIFT,
     "Overhead Press" to Movement.OHP,
     "Barbell Bent-Over Row" to Movement.ROW,
 )

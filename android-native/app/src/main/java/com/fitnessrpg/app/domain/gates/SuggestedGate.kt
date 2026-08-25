@@ -4,8 +4,8 @@ import com.fitnessrpg.app.domain.rank.Rank
 
 data class SuggestedGate(
     val name: String,
-    /** Gate Difficulty (chosen before training) — distinct from Gate Clear Rank. */
-    val difficulty: Rank,
+    /** Last assessed post-workout difficulty; null until this user completes it. */
+    val difficulty: Rank?,
     val muscleGroups: List<String>,
     val durationMinutes: Int,
     val intensity: String,
@@ -14,8 +14,8 @@ data class SuggestedGate(
 /** Placeholder "Today's Gate" starter suggestion for the System dashboard. */
 val STARTER_GATE = SuggestedGate(
     name = "Full Body — Initiation",
-    difficulty = Rank.D,
+    difficulty = null,
     muscleGroups = listOf("Chest", "Back", "Legs", "Core"),
     durationMinutes = 45,
-    intensity = "Moderate",
+    intensity = "Not Assessed",
 )

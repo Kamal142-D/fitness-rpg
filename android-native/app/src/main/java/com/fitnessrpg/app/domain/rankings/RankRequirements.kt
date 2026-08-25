@@ -12,8 +12,8 @@ val HUNTER_RANK_REQUIREMENTS: Map<Rank, RankRequirement> = mapOf(
     Rank.D to RankRequirement(minHunterScore = 25, minPhysique = 20, minStrength = 15, minConditioning = 15),
     Rank.C to RankRequirement(minHunterScore = 40, minPhysique = 35, minStrength = 30, minConditioning = 25),
     Rank.B to RankRequirement(minHunterScore = 55, minPhysique = 50, minStrength = 45, minConditioning = 40),
-    Rank.A to RankRequirement(minHunterScore = 70, minPhysique = 65, minStrength = 65, minConditioning = 55),
-    Rank.S to RankRequirement(minHunterScore = 85, minPhysique = 80, minStrength = 80, minConditioning = 75),
+    Rank.A to RankRequirement(minHunterScore = 72, minPhysique = 68, minStrength = 68, minConditioning = 60),
+    Rank.S to RankRequirement(minHunterScore = 87, minPhysique = 82, minStrength = 82, minConditioning = 78),
 )
 
 /** The highest rank reachable while the assessment is provisional (incomplete). */

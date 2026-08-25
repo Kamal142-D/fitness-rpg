@@ -45,13 +45,20 @@ class GateMappersTest {
     }
 
     @Test
-    fun `templateToSuggestedGate maps a template into the dashboard shape`() {
+    fun `new template is not assessed instead of using planned difficulty`() {
         val g = templateToSuggestedGate(template())
         assertEquals("Push", g.name)
-        assertEquals(Rank.C, g.difficulty)
+        assertEquals(null, g.difficulty)
         assertEquals(50, g.durationMinutes)
-        assertEquals("Moderate", g.intensity)
+        assertEquals("Not Assessed", g.intensity)
         assertTrue(g.muscleGroups.contains("Chest"))
+    }
+
+    @Test
+    fun `template uses last assessed difficulty`() {
+        val g = templateToSuggestedGate(template().copy(lastDifficultyRank = "B"))
+        assertEquals(Rank.B, g.difficulty)
+        assertEquals("Hard", g.intensity)
     }
 
     @Test

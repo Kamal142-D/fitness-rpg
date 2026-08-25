@@ -57,6 +57,12 @@ fun PlayerScreen(userId: String) {
             else -> {
                 val (prog, data) = r.getOrThrow()
                 if (prog != null) {
+                    if (prog.assessmentUpdateRequired) {
+                        AppCard {
+                            AppText("SYSTEM ASSESSMENT UPDATE", variant = TextVariant.HEADING, tone = TextTone.ACCENT)
+                            AppText("The Hunter Ranking System has been improved. Complete the missing physical assessments to improve rank accuracy.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                        }
+                    }
                     HunterRankPanel(
                         hunterRankFromScores(prog.physiqueScore, prog.strengthScore),
                         modifier = Modifier.fillMaxWidth(),

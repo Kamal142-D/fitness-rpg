@@ -11,13 +11,15 @@ import com.fitnessrpg.app.domain.rank.Rank
 /** The three physical pillars that determine Hunter Rank. */
 enum class PhysicalAttribute { PHYSIQUE, STRENGTH, CONDITIONING }
 
-enum class Equipment { BARBELL, DUMBBELL, MACHINE, SMITH_MACHINE, BODYWEIGHT, OTHER }
+enum class Equipment { BARBELL, DUMBBELL, MACHINE, SMITH_MACHINE, CABLE, BODYWEIGHT, OTHER }
 
 /** For dumbbells, whether the entered weight is per hand or the combined total. */
 enum class DumbbellWeightMode { PER_HAND, COMBINED }
 
 /** How much validated physical data backs the assessment. Only HIGH may reach S. */
 enum class AssessmentConfidence { LOW, MEDIUM, HIGH }
+enum class BodyAssessmentSource { INBODY, SMART_SCALE, MANUAL, OTHER }
+enum class ConditioningTestType { COOPER_12_MINUTE, RUN_1_5_MILE, STEP_3_MINUTE }
 
 /**
  * Body-composition inputs. Each field is a DISTINCT measurement — muscleMassKg
@@ -32,6 +34,10 @@ data class BodyCompositionData(
     val skeletalMuscleMassKg: Double? = null,
     val leanBodyMassKg: Double? = null,
     val visceralFatLevel: Double? = null,
+    val waistCm: Double? = null,
+    val ageYears: Int? = null,
+    val source: BodyAssessmentSource? = null,
+    val assessedAtEpochDay: Long? = null,
     /** "male" | "female" | null (neutral). */
     val sex: String? = null,
 )
@@ -45,7 +51,14 @@ data class StrengthAssessmentInput(
     val reps: Int,
     /** Required when equipment == DUMBBELL. Defaults to PER_HAND when null. */
     val dumbbellWeightMode: DumbbellWeightMode? = null,
+    val variation: String = "standard",
+    val rpe: Double? = null,
+    val performedAtEpochDay: Long? = null,
 )
+
+data class PhysiqueRankResult(val score: Double?, val rank: Rank?, val bodyCompositionScore: Double?, val muscularityScore: Double?, val waistScore: Double?, val balanceScore: Double?, val rankCap: Rank?, val provisional: Boolean, val reasons: List<String>)
+data class StrengthRankResult(val score: Double?, val rank: Rank?, val movementScores: Map<String, Double>, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
+data class ConditioningRankResult(val score: Double?, val rank: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
 
 /** Minimum thresholds a rank requires across the score + each pillar. */
 data class RankRequirement(
@@ -75,4 +88,6 @@ data class HunterRankResult(
     val provisional: Boolean,
     val confidence: AssessmentConfidence,
     val nextRank: NextRankInfo?,
+    val rankCap: Rank? = null,
+    val reasons: List<String> = emptyList(),
 )

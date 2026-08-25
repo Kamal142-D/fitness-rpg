@@ -34,7 +34,8 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
                     AppText("Rank ${result.rank.name}", variant = TextVariant.TITLE)
                     if (result.provisional) ProvisionalTag()
                 }
-                AppText("Overall ${result.hunterScore.roundToInt()} / 100", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
+                AppText("Calculated Hunter Score ${result.hunterScore.roundToInt()} / 100", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
+                result.rankCap?.let { AppText("CURRENT RANK CAP  ${it.name}", variant = TextVariant.CAPTION, tone = TextTone.ACCENT, mono = true) }
             }
         }
 
@@ -51,6 +52,12 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
                 AppText(limiting.label(), variant = TextVariant.HEADING, tone = TextTone.DANGER)
                 AppText("${limiting.label()} is limiting your rank.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
             }
+        }
+
+        Column(modifier = Modifier.padding(top = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            AppText("ASSESSMENT CONFIDENCE", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            AppText(result.confidence.name, variant = TextVariant.HEADING, mono = true)
+            result.reasons.forEach { AppText(it, variant = TextVariant.CAPTION, tone = TextTone.SECONDARY) }
         }
 
         val next = result.nextRank

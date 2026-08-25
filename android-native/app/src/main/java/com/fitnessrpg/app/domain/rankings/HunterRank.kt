@@ -19,19 +19,17 @@ fun computeHunterRank(
     physiqueScore: Double?,
     strengthScore: Double?,
     conditioningScore: Double?,
+    evidenceConfidence: AssessmentConfidence? = null,
 ): HunterRankResult {
-    val confidence = when {
-        strengthScore == null -> AssessmentConfidence.LOW
-        conditioningScore == null -> AssessmentConfidence.MEDIUM
-        else -> AssessmentConfidence.HIGH
-    }
+    val missing = listOf(physiqueScore, strengthScore, conditioningScore).count { it == null }
+    val confidence = evidenceConfidence ?: if (missing > 0) AssessmentConfidence.LOW else AssessmentConfidence.MEDIUM
     val provisional = confidence != AssessmentConfidence.HIGH
 
     // Weighted base over the assessed pillars (renormalized), plus weakest penalty.
     val weighted = buildList {
-        physiqueScore?.let { add(it to 0.40) }
+        physiqueScore?.let { add(it to 0.35) }
         strengthScore?.let { add(it to 0.40) }
-        conditioningScore?.let { add(it to 0.20) }
+        conditioningScore?.let { add(it to 0.25) }
     }
     val base = if (weighted.isNotEmpty()) {
         weighted.sumOf { it.first * it.second } / weighted.sumOf { it.second }
@@ -40,13 +38,13 @@ fun computeHunterRank(
     }
     val known = listOfNotNull(physiqueScore, strengthScore, conditioningScore)
     val weakest = known.minOrNull() ?: 0.0
-    val hunterScore = clampScore(base * 0.70 + weakest * 0.30)
+    val hunterScore = clampScore(base * 0.80 + weakest * 0.20)
 
     val provisionalCapIndex = PROVISIONAL_MAX_RANK.ordinal
 
     fun pillarPasses(score: Double?, min: Int, rankIndex: Int): Boolean = when {
         min == 0 -> true
-        score == null -> rankIndex <= provisionalCapIndex // unassessed: allowed only up to the provisional cap
+        score == null -> rankIndex <= provisionalCapIndex
         else -> score >= min
     }
 
@@ -63,7 +61,12 @@ fun computeHunterRank(
     for (rank in Rank.entries) {
         if (meets(rank)) chosen = rank
     }
-    val cap = if (provisional) PROVISIONAL_MAX_RANK else Rank.S
+    val confidenceCap = when (confidence) {
+        AssessmentConfidence.LOW -> Rank.C
+        AssessmentConfidence.MEDIUM -> Rank.A
+        AssessmentConfidence.HIGH -> Rank.S
+    }
+    val cap = if (missing > 0) minOf(PROVISIONAL_MAX_RANK, confidenceCap) else confidenceCap
     if (chosen.ordinal > cap.ordinal) chosen = cap
 
     val next = Rank.entries.getOrNull(chosen.ordinal + 1)
@@ -83,6 +86,13 @@ fun computeHunterRank(
         provisional = provisional,
         confidence = confidence,
         nextRank = nextInfo,
+        rankCap = cap,
+        reasons = buildList {
+            if (physiqueScore == null) add("Physique has not been fully assessed.")
+            if (strengthScore == null) add("Strength assessment is incomplete.")
+            if (conditioningScore == null) add("Conditioning has not been assessed.")
+            if (confidence != AssessmentConfidence.HIGH) add("More recent validated evidence is needed for higher ranks.")
+        },
     )
 }
 
@@ -94,10 +104,9 @@ private fun limitingAttributeFor(
     conditioning: Double?,
 ): PhysicalAttribute? {
     val req = HUNTER_RANK_REQUIREMENTS.getValue(next)
-    // Only ASSESSED pillars can be "limiting". An unassessed pillar (e.g. conditioning
-    // not yet measured) is surfaced via the provisional flag, not as the limiter.
     fun gap(score: Double?, min: Int): Double = when {
-        min == 0 || score == null -> 0.0
+        min == 0 -> 0.0
+        score == null -> min.toDouble()
         else -> maxOf(0.0, min - score)
     }
     val gaps = listOf(

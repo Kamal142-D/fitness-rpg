@@ -21,6 +21,9 @@ import com.fitnessrpg.app.domain.onboarding.TrainingLocation
 import com.fitnessrpg.app.domain.onboarding.ageFromDob
 import com.fitnessrpg.app.domain.onboarding.isValidDateString
 import com.fitnessrpg.app.domain.rankings.BodyCompositionData
+import com.fitnessrpg.app.domain.rankings.BodyAssessmentSource
+import com.fitnessrpg.app.domain.rankings.ConditioningInput
+import com.fitnessrpg.app.domain.rankings.ConditioningTestType
 import com.fitnessrpg.app.domain.rankings.DumbbellWeightMode
 import com.fitnessrpg.app.domain.rankings.Equipment
 import com.fitnessrpg.app.domain.rankings.HunterRankResult
@@ -66,6 +69,10 @@ private val DUMBBELL_MODE_OPTIONS = listOf(
     ChoiceOption("Per dumbbell", DumbbellWeightMode.PER_HAND),
     ChoiceOption("Combined weight", DumbbellWeightMode.COMBINED),
 )
+private val BODY_SOURCE_OPTIONS = listOf(
+    ChoiceOption("Manual", BodyAssessmentSource.MANUAL), ChoiceOption("InBody", BodyAssessmentSource.INBODY),
+    ChoiceOption("Smart scale", BodyAssessmentSource.SMART_SCALE), ChoiceOption("Other", BodyAssessmentSource.OTHER),
+)
 
 private class Lift {
     var equipment by mutableStateOf(Equipment.BARBELL)
@@ -97,7 +104,10 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
     var experience by remember { mutableStateOf<ExperienceLevel?>(null) }
     var days by remember { mutableStateOf<Int?>(null) }
     var bodyFat by remember { mutableStateOf("") }
-    var muscleMass by remember { mutableStateOf("") }
+    var waist by remember { mutableStateOf("") }
+    var skeletalMuscleMass by remember { mutableStateOf("") }
+    var bodySource by remember { mutableStateOf(BodyAssessmentSource.MANUAL) }
+    var cooperDistance by remember { mutableStateOf("") }
     var strengthSkipped by remember { mutableStateOf(false) }
     val bench = remember { Lift() }
     val squat = remember { Lift() }
@@ -111,7 +121,10 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
         weightKg = weight.toDoubleOrNull() ?: 0.0,
         heightCm = height.toDoubleOrNull() ?: 0.0,
         bodyFatPercent = bodyFat.toDoubleOrNull(),
-        muscleMassKg = muscleMass.toDoubleOrNull(),
+        waistCm = waist.toDoubleOrNull(),
+        skeletalMuscleMassKg = skeletalMuscleMass.toDoubleOrNull(),
+        ageYears = ageFromDob(dob),
+        source = bodySource,
         sex = sex?.wire,
     )
 
@@ -132,18 +145,28 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
         trainingLocation = TrainingLocation.GYM,
         preferredWorkoutMinutes = 45,
         bodyFatPercent = bodyFat.toDoubleOrNull(),
-        skeletalMuscleMassKg = null, // never store total muscle mass as SMM
+        waistCm = waist.toDoubleOrNull(),
+        bodyAssessmentSource = bodySource.name.lowercase(),
+        conditioningTestType = cooperDistance.toDoubleOrNull()?.let { "cooper_12_minute" },
+        conditioningResult = cooperDistance.toDoubleOrNull(),
+        strengthAssessmentSets = strengthInputs().orEmpty(),
+        skeletalMuscleMassKg = skeletalMuscleMass.toDoubleOrNull(),
     )
 
     fun valid(): Boolean {
         val h = height.toDoubleOrNull()
         val wt = weight.toDoubleOrNull()
+        val bf = bodyFat.toDoubleOrNull()
+        val wc = waist.toDoubleOrNull()
+        val smm = skeletalMuscleMass.toDoubleOrNull()
         return name.isNotBlank() &&
             isValidDateString(dob) && ageFromDob(dob) in 13..100 &&
             sex != null &&
             h != null && h in 100.0..250.0 &&
             wt != null && wt in 30.0..300.0 &&
-            goal != null && experience != null && (days ?: 0) in 1..7
+            goal != null && experience != null && (days ?: 0) in 1..7 &&
+            (bf == null || bf in 3.0..60.0) && (wc == null || wc in 40.0..200.0) &&
+            (smm == null || (smm > 0.0 && wt != null && smm <= wt))
     }
 
     val r = result
@@ -193,7 +216,16 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
             SectionTitle("Body assessment (optional)")
             AppText("From an InBody scan or scale, if you have it. Leave blank if unknown.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
             AppTextField(bodyFat, { bodyFat = it }, label = "Body fat (%)", keyboardType = KeyboardType.Decimal)
-            AppTextField(muscleMass, { muscleMass = it }, label = "Muscle mass (kg)", keyboardType = KeyboardType.Decimal)
+            AppTextField(waist, { waist = it }, label = "Waist circumference (cm)", keyboardType = KeyboardType.Decimal)
+            AppTextField(skeletalMuscleMass, { skeletalMuscleMass = it }, label = "Skeletal muscle mass (kg, only if explicitly measured)", keyboardType = KeyboardType.Decimal)
+            AppText("Measurement source", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            ChoiceGroup(BODY_SOURCE_OPTIONS, bodySource, { bodySource = it })
+        }
+
+        AppCard {
+            SectionTitle("Conditioning assessment (optional)")
+            AppText("If available, enter distance covered in a 12-minute Cooper run. Leave blank to skip.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            AppTextField(cooperDistance, { cooperDistance = it }, label = "12-minute distance (metres)", keyboardType = KeyboardType.Decimal)
         }
 
         AppCard {
@@ -232,7 +264,11 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
             "Awaken",
             onClick = {
                 showErrors = true
-                if (valid()) result = computeOnboardingHunterRank(body(), strengthInputs())
+                if (valid()) result = computeOnboardingHunterRank(
+                    body(), strengthInputs(), cooperDistance.toDoubleOrNull()?.let {
+                        ConditioningInput(ConditioningTestType.COOPER_12_MINUTE, it, ageFromDob(dob), sex?.wire)
+                    },
+                )
             },
             modifier = Modifier.fillMaxWidth(),
         )

@@ -42,8 +42,8 @@ fun clampScore(score: Double): Double = when {
  */
 fun scoreToRank(score: Double): Rank {
     val value = clampScore(score)
-    for (band in RANK_THRESHOLDS) {
-        if (value <= band.max) return band.rank
+    for (band in RANK_THRESHOLDS.asReversed()) {
+        if (value >= band.min) return band.rank
     }
     // clampScore guarantees value <= 100, so the loop always returns; this is a
     // defensive fallback for the strongest rank.

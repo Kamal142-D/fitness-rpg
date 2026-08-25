@@ -5,6 +5,7 @@ import com.fitnessrpg.app.domain.model.ActiveExercise
 import com.fitnessrpg.app.domain.model.ActiveSet
 import com.fitnessrpg.app.domain.model.ActiveWorkout
 import com.fitnessrpg.app.domain.model.GateDetail
+import com.fitnessrpg.app.domain.model.Exercise
 import com.fitnessrpg.app.util.genId
 import com.fitnessrpg.app.util.isoFromMillis
 import com.fitnessrpg.app.util.uuidV4
@@ -53,7 +54,7 @@ fun createActiveWorkout(detail: GateDetail, now: Long = System.currentTimeMillis
         sessionId = uuidV4(),
         templateId = detail.template.id,
         name = detail.template.name,
-        gateDifficulty = templateDifficulty(detail.template),
+        gateDifficulty = null,
         startedAt = isoFromMillis(now),
         currentExerciseIndex = 0,
         restEndsAt = null,
@@ -161,6 +162,26 @@ fun removeSet(state: ActiveWorkout, exIdx: Int, setIdx: Int): ActiveWorkout =
         if (ex.sets.size <= 1) ex
         else ex.copy(sets = renumber(ex.sets.filterIndexed { i, _ -> i != setIdx }))
     }
+
+private fun activeExerciseFrom(exercise: Exercise): ActiveExercise = ActiveExercise(
+    id = genId("ex"), exerciseId = exercise.id, name = exercise.name,
+    primaryMuscle = exercise.primaryMuscleGroup, targetSets = DEFAULT_SETS,
+    targetRepsMin = 8, targetRepsMax = 12, targetRpe = 8.0, restSeconds = 90,
+    rankingEnabled = exercise.rankingEnabled, notes = "",
+    sets = (1..DEFAULT_SETS).map { number ->
+        ActiveSet(genId("set"), number, null, 8, null, false, false, null)
+    },
+)
+
+fun addExercise(state: ActiveWorkout, exercise: Exercise): ActiveWorkout =
+    if (state.exercises.any { it.exerciseId == exercise.id }) state
+    else state.copy(exercises = state.exercises + activeExerciseFrom(exercise))
+
+fun replaceExercise(state: ActiveWorkout, exIdx: Int, exercise: Exercise): ActiveWorkout =
+    if (exIdx !in state.exercises.indices) state
+    else state.copy(exercises = state.exercises.mapIndexed { index, current ->
+        if (index == exIdx) activeExerciseFrom(exercise) else current
+    })
 
 fun setCurrentExercise(state: ActiveWorkout, idx: Int): ActiveWorkout {
     val clamped = maxOf(0, minOf(idx, state.exercises.size - 1))

@@ -9,21 +9,21 @@ class GateScoreTest {
 
     @Test
     fun `applies the documented weights`() {
-        // 80*.5 + 100*.2 + 60*.15 + 50*.1 + 60*.05 = 77
+        // completion 35%, target performance 30%, progress 25%, PR 10%
         val score = computeGateScore(
             GateScoreInput(performance = 80.0, completion = 100.0, progress = 60.0, pr = 50.0, quality = 60.0),
         )
-        assertEquals(77.0, score, 1e-4)
+        assertEquals(79.0, score, 1e-4)
         assertEquals(Rank.A, gateClearRank(score))
     }
 
     @Test
     fun `renormalizes when a factor is missing instead of scoring zero`() {
-        // Drop progress (weight .15): (80*.5 + 100*.2 + 50*.1 + 60*.05) / .85 = 80
+        // Drop progress: remaining components are renormalized.
         val score = computeGateScore(
             GateScoreInput(performance = 80.0, completion = 100.0, progress = null, pr = 50.0, quality = 60.0),
         )
-        assertEquals(80.0, score, 1e-4)
+        assertEquals(85.333333, score, 1e-4)
     }
 
     @Test

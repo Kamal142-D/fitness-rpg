@@ -38,13 +38,13 @@ fun muscleGroupsFor(description: String?): List<String> {
 
 /** Map a template to the SuggestedGate shape used by the dashboard GateCard. */
 fun templateToSuggestedGate(t: GateTemplate): SuggestedGate {
-    val difficulty = templateDifficulty(t)
+    val difficulty = t.lastDifficultyRank?.let { runCatching { Rank.valueOf(it) }.getOrNull() }
     return SuggestedGate(
         name = t.name,
         difficulty = difficulty,
         muscleGroups = muscleGroupsFor(t.description),
         durationMinutes = t.estimatedDurationMinutes ?: DEFAULT_DURATION,
-        intensity = intensityForDifficulty(difficulty),
+        intensity = difficulty?.let(::intensityForDifficulty) ?: "Not Assessed",
     )
 }
 

@@ -31,6 +31,8 @@ data class CompletionExercisePayload(
     val exerciseScore: Double?,
     val performanceGrade: String?,
     val sets: List<CompletionSetPayload>,
+    val difficultyScore: Double? = null,
+    val difficultyRank: String? = null,
 )
 
 data class CompletionSession(
@@ -48,6 +50,8 @@ data class CompletionSession(
     val gateScore: Double?,
     val gateClearRank: String?,
     val xpEarned: Int?,
+    val gateDifficultyScore: Double? = null,
+    val gateDifficultyRank: String? = null,
 )
 
 data class CompletionPayload(
@@ -125,7 +129,7 @@ fun buildCompletionPayload(
                 id = state.sessionId,
                 templateId = state.templateId,
                 name = state.name,
-                gateDifficulty = state.gateDifficulty?.name,
+                gateDifficulty = null,
                 startedAt = state.startedAt,
                 completedAt = completedAt,
                 durationSeconds = durationSeconds,
@@ -141,7 +145,7 @@ fun buildCompletionPayload(
         ),
         aggregates = CompletionAggregates(
             name = state.name,
-            gateDifficulty = state.gateDifficulty?.name,
+            gateDifficulty = null,
             durationSeconds = durationSeconds,
             totalVolumeKg = totalVolumeKg,
             completedSets = completedSets,

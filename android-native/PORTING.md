@@ -29,13 +29,26 @@ and RPCs; only the client is rewritten.
 | 4 | Auth screens (login/register/forgot) + session gate | ✅ done |
 | 5 | Onboarding (Awakening) + initial assessment + reveal | ✅ done |
 | 6 | System dashboard | ✅ done |
-| 7 | Gates (list + detail) | ✅ list + detail; custom-Gate builder ⬜ |
+| 7 | Gates (list + detail) | ✅ create/edit/duplicate/archive + full exercise search |
 | 8 | Workout logger + active-workout store | ✅ done (in-memory store) |
 | 9 | PR engine + finish-workout flow | ✅ done (FinishWorkoutUseCase) |
 | 10 | Progression (XP/level), quests | ✅ done |
 | 11 | Player + analytics | ✅ ranks + monthly; SVG charts ⬜ |
 | 12 | Settings + in-app updater | ✅ done (GitHub release + APK install) |
-| 13 | Hardening: error states, polish, release signing | 🚧 signing done; polish ongoing |
+| 13 | Hardening: error states, polish, release signing | 🚧 signing done; polish ongoing (v0.3.0) |
+
+### Gate/routine upgrade (v0.3.0)
+
+- Gate Difficulty is no longer selected on a template. It is calculated after
+  completion from personalized relative intensity, working volume, set effort,
+  progression, and bodyweight-aware effective load. Gate Difficulty and Clear
+  Rank are stored and displayed independently.
+- New routines show **Not Assessed** until their first completion; templates
+  retain last/average difficulty and completion history.
+- The native Gate builder searches and filters the complete imported exercise
+  catalog; workout exercises can also be added or replaced through the picker.
+- User routines use soft deletion, preserving every historical session, PR,
+  progression update, and analytics record. System routines are hidden per-user.
 
 ### UI layer built (Jetpack Compose)
 
@@ -67,7 +80,6 @@ Replaced the weighted-average Hunter Rank with a three-pillar, gated system in
 
 ### Remaining / follow-ups
 
-- Custom-Gate builder screen (exercise picker).
 - SVG line/bar charts on the Player screen (volume/frequency/bodyweight).
 - DataStore persistence of the active-workout draft across process death.
 - Compose UI tests to replace the RN component tests.
@@ -94,7 +106,8 @@ validation) · `util` (units, ids, time).
 
 - **In-place upgrade:** `applicationId = com.anonymous.fitnessrpg` (matches the
   RN app) and the release APK is signed with the **same** keystore
-  (`release.keystore`, alias `fitnessrpg`). `versionCode = 2` (> RN's 1). The
+  (`release.keystore`, alias `fitnessrpg`). `versionCode = 3` (> RN's 1) and
+  `versionName = 0.3.0`. The
   code package / `namespace` stays `com.fitnessrpg.app` (internal only).
   - Caveat: Android only upgrades in place when the installed app was signed with
     this same key. If the device currently has a **debug/Expo dev build**, its

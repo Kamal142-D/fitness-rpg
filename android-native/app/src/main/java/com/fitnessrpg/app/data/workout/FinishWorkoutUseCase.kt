@@ -19,12 +19,16 @@ import com.fitnessrpg.app.domain.workouts.CompletionAggregates
 import com.fitnessrpg.app.domain.workouts.CompletionPayload
 import com.fitnessrpg.app.domain.workouts.GateResult
 import com.fitnessrpg.app.domain.workouts.computeGateResult
+import com.fitnessrpg.app.domain.gates.DifficultySet
+import com.fitnessrpg.app.domain.gates.ExerciseDifficultyInput
+import com.fitnessrpg.app.domain.gates.calculateGateDifficulty
 
 data class FinishResult(
     val sessionId: String,
     val aggregates: CompletionAggregates,
     val prs: List<DetectedPR>,
     val gate: GateResult,
+    val exerciseNames: Map<String, String> = emptyMap(),
 )
 
 /** Holds the most recent finish result so the completion screen can display it. */
@@ -51,6 +55,20 @@ class FinishWorkoutUseCase {
             ServiceLocator.prRepository.getExerciseStats(exerciseIds)
         }.getOrDefault(emptyMap())
 
+        val exerciseMetadata = runCatching { ServiceLocator.gateRepository.getExercises(exerciseIds) }.getOrDefault(emptyMap())
+        val bodyWeightKg = runCatching { ServiceLocator.profileRepository.getProfile(userId)?.currentWeightKg }.getOrNull()
+        val difficulty = calculateGateDifficulty(payload.exercises.map { ex ->
+            val meta = exerciseMetadata[ex.exerciseId]
+            ExerciseDifficultyInput(
+                exerciseId = ex.exerciseId,
+                sets = ex.sets.map { DifficultySet(it.weightKg, it.reps, it.rpe, it.isWarmup) },
+                currentEstimated1rmKg = priorStats[ex.exerciseId]?.bestEstimated1rmKg,
+                bodyWeightKg = bodyWeightKg,
+                equipment = meta?.equipment,
+                isMajorExercise = meta?.category !in setOf("arms", "core"),
+            )
+        })
+
         val detectExercises = payload.exercises.map { ex ->
             DetectExercise(
                 exerciseId = ex.exerciseId,
@@ -59,7 +77,7 @@ class FinishWorkoutUseCase {
             )
         }
         val detection = detectPRs(detectExercises, priorStats)
-        val gate = computeGateResult(payload, priorStats, aggregates, detection.prs.map { it.recordType })
+        val gate = computeGateResult(payload, priorStats, aggregates, detection.prs.map { it.recordType }, difficulty)
 
         val sessionId = ServiceLocator.workoutRepository.completeWorkout(augment(payload, gate))
 
@@ -86,7 +104,7 @@ class FinishWorkoutUseCase {
             }
         }
 
-        return FinishResult(sessionId, aggregates, prioritizePRs(detection.prs), gate)
+        return FinishResult(sessionId, aggregates, prioritizePRs(detection.prs), gate, exerciseMetadata.mapValues { it.value.name })
     }
 
     /** Attach the computed Gate result to the session + per-exercise payload. */
@@ -99,11 +117,15 @@ class FinishWorkoutUseCase {
                 gateScore = gate.gateScore,
                 gateClearRank = gate.gateClearRank.name,
                 xpEarned = gate.xpEarned,
+                gateDifficultyScore = gate.difficulty?.score,
+                gateDifficultyRank = gate.difficulty?.rank?.name,
             ),
             exercises = payload.exercises.mapIndexed { i, ex ->
                 ex.copy(
                     exerciseScore = gate.perExercise.getOrNull(i)?.performanceScore,
                     performanceGrade = gate.perExercise.getOrNull(i)?.performanceGrade?.name,
+                    difficultyScore = gate.difficulty?.perExercise?.find { it.exerciseId == ex.exerciseId }?.score,
+                    difficultyRank = gate.difficulty?.perExercise?.find { it.exerciseId == ex.exerciseId }?.rank?.name,
                 )
             },
         )

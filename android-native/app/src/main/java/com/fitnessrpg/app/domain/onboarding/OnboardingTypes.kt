@@ -1,5 +1,7 @@
 package com.fitnessrpg.app.domain.onboarding
 
+import com.fitnessrpg.app.domain.rankings.StrengthAssessmentInput
+
 enum class Sex(val wire: String) {
     MALE("male"), FEMALE("female"), INTERSEX("intersex"), PREFER_NOT_TO_SAY("prefer_not_to_say")
 }
@@ -34,6 +36,11 @@ data class OnboardingDraft(
     val trainingLocation: TrainingLocation? = null,
     val preferredWorkoutMinutes: Int? = null,
     val bodyFatPercent: Double? = null,
+    val waistCm: Double? = null,
+    val bodyAssessmentSource: String = "manual",
+    val conditioningTestType: String? = null,
+    val conditioningResult: Double? = null,
+    val strengthAssessmentSets: List<StrengthAssessmentInput> = emptyList(),
     val skeletalMuscleMassKg: Double? = null,
     val baselineBenchKg: Double? = null,
     val baselineSquatKg: Double? = null,

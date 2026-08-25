@@ -1,12 +1,16 @@
 package com.fitnessrpg.app.ui.screens.workout
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,6 +18,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,8 +29,12 @@ import com.fitnessrpg.app.data.workout.FinishWorkoutUseCase
 import com.fitnessrpg.app.data.workout.WorkoutResultHolder
 import com.fitnessrpg.app.di.ServiceLocator
 import com.fitnessrpg.app.domain.gates.formatTargets
+import com.fitnessrpg.app.domain.gates.searchExercises
 import com.fitnessrpg.app.domain.model.ActiveExercise
 import com.fitnessrpg.app.domain.model.ActiveSet
+import com.fitnessrpg.app.domain.model.Exercise
+import com.fitnessrpg.app.domain.workouts.addExercise
+import com.fitnessrpg.app.domain.workouts.replaceExercise
 import com.fitnessrpg.app.domain.workouts.addSet
 import com.fitnessrpg.app.domain.workouts.buildCompletionPayload
 import com.fitnessrpg.app.domain.workouts.completeSet
@@ -48,6 +57,8 @@ import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
 
 private fun Double?.toField(): String =
     this?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
@@ -59,6 +70,10 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
     val scope = rememberCoroutineScope()
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pickerIndex by remember { mutableStateOf<Int?>(null) }
+    val exerciseCatalog by produceState<List<Exercise>>(emptyList()) {
+        value = runCatching { ServiceLocator.gateRepository.listExercises() }.getOrDefault(emptyList())
+    }
 
     val w = workout
     if (w == null) {
@@ -99,8 +114,10 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
         error?.let { AppText(it, tone = TextTone.DANGER) }
 
         w.exercises.forEachIndexed { exIdx, ex ->
-            ExerciseCard(ex, exIdx, store)
+            ExerciseCard(ex, exIdx, store, onReplace = { pickerIndex = exIdx })
         }
+
+        AppButton("Add exercise", onClick = { pickerIndex = -1 }, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
 
         AppButton(
             "Finish workout",
@@ -130,15 +147,23 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
             modifier = Modifier.fillMaxWidth(),
             loading = submitting,
         )
+
+        pickerIndex?.let { index ->
+            ExercisePickerDialog(exerciseCatalog, onDismiss = { pickerIndex = null }) { exercise ->
+                store.update { state -> if (index < 0) addExercise(state, exercise) else replaceExercise(state, index, exercise) }
+                pickerIndex = null
+            }
+        }
     }
 }
 
 @Composable
-private fun ExerciseCard(ex: ActiveExercise, exIdx: Int, store: com.fitnessrpg.app.data.local.ActiveWorkoutStore) {
+private fun ExerciseCard(ex: ActiveExercise, exIdx: Int, store: com.fitnessrpg.app.data.local.ActiveWorkoutStore, onReplace: () -> Unit) {
     AppCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             AppText(ex.name, variant = TextVariant.HEADING, modifier = Modifier.weight(1f))
             AppText(formatTargets(ex.targetSets, ex.targetRepsMin, ex.targetRepsMax), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
+            AppButton("Replace", onClick = onReplace, variant = ButtonVariant.GHOST)
         }
         Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             ex.sets.forEachIndexed { setIdx, set ->
@@ -150,6 +175,30 @@ private fun ExerciseCard(ex: ActiveExercise, exIdx: Int, store: com.fitnessrpg.a
             AppButton("Remove", onClick = { store.update { removeSet(it, exIdx, ex.sets.size - 1) } }, variant = ButtonVariant.GHOST)
         }
     }
+}
+
+@Composable
+private fun ExercisePickerDialog(catalog: List<Exercise>, onDismiss: () -> Unit, onSelected: (Exercise) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val results = remember(catalog, query) { searchExercises(catalog, query).take(30) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add exercise") },
+        text = {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                AppTextField(query, { query = it }, placeholder = "Search exercises…")
+                results.forEach { exercise ->
+                    AppCard(Modifier.fillMaxWidth().clickable { onSelected(exercise) }) {
+                        AppText(exercise.name, variant = TextVariant.LABEL)
+                        AppText(listOfNotNull(exercise.primaryMuscleGroup, exercise.equipment).joinToString(" · "), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                    }
+                }
+                if (results.isEmpty()) AppText("No exercises found.", tone = TextTone.SECONDARY)
+            }
+        },
+        confirmButton = {},
+        dismissButton = { AppButton("Cancel", onClick = onDismiss, variant = ButtonVariant.GHOST) },
+    )
 }
 
 @Composable

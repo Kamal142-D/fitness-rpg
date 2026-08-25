@@ -28,7 +28,8 @@ fun GateCard(gate: SuggestedGate, onEnter: () -> Unit, modifier: Modifier = Modi
                 AppText("TODAY'S GATE", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                 AppText(gate.name, variant = TextVariant.HEADING)
             }
-            RankBadge(gate.difficulty, size = RankBadgeSize.MD)
+            if (gate.difficulty != null) RankBadge(gate.difficulty, size = RankBadgeSize.MD)
+            else AppText("NEW", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
         }
 
         if (gate.muscleGroups.isNotEmpty()) {

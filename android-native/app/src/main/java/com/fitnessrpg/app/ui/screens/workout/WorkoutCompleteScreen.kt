@@ -34,11 +34,27 @@ fun WorkoutCompleteScreen(onDone: () -> Unit) {
         }
 
         val gate = result.gate
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
-            RankBadge(gate.gateClearRank, size = RankBadgeSize.LG)
+        AppText(result.aggregates.name, variant = TextVariant.DISPLAY)
+
+        AppCard {
+            AppText("GATE DIFFICULTY", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                RankBadge(gate.difficulty?.rank ?: com.fitnessrpg.app.domain.rank.Rank.E, size = RankBadgeSize.LG)
+                Column {
+                    AppText(gate.difficulty?.rank?.name ?: "Not Assessed", variant = TextVariant.TITLE)
+                    AppText("Based on today's load, reps, working sets and volume", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                }
+            }
+        }
+
+        AppCard {
+            AppText("CLEAR RANK", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                RankBadge(gate.gateClearRank, size = RankBadgeSize.LG)
             Column {
                 AppText("Gate Clear Rank ${gate.gateClearRank.name}", variant = TextVariant.TITLE)
                 AppText("Gate score ${gate.gateScore.roundToInt()}", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
+            }
             }
         }
 
@@ -46,6 +62,20 @@ fun WorkoutCompleteScreen(onDone: () -> Unit) {
             StatChip("XP EARNED", "+${gate.xpEarned}", modifier = Modifier.weight(1f))
             StatChip("SETS", "${result.aggregates.completedSets}", modifier = Modifier.weight(1f))
             StatChip("VOLUME", "${result.aggregates.totalVolumeKg.roundToInt()} kg", modifier = Modifier.weight(1f))
+        }
+
+        AppCard {
+            AppText("EXERCISES", variant = TextVariant.HEADING)
+            gate.difficulty?.perExercise?.forEach { difficulty ->
+                val performance = gate.perExercise.find { it.exerciseId == difficulty.exerciseId }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        AppText(result.exerciseNames[difficulty.exerciseId] ?: "Exercise", variant = TextVariant.LABEL)
+                        AppText("Difficulty ${difficulty.rank.name}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                    }
+                    AppText("Performance ${performance?.performanceGrade?.name ?: "—"}", variant = TextVariant.CAPTION, tone = TextTone.SUCCESS)
+                }
+            }
         }
 
         AppCard {

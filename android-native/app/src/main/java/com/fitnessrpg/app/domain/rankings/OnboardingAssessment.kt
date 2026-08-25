@@ -9,6 +9,7 @@ package com.fitnessrpg.app.domain.rankings
 fun computeOnboardingHunterRank(
     body: BodyCompositionData,
     strength: List<StrengthAssessmentInput>?,
+    conditioning: ConditioningInput? = null,
 ): HunterRankResult {
     val physiqueScore = computePhysiqueScore(body)
     val strengthScore = strength
@@ -17,6 +18,6 @@ fun computeOnboardingHunterRank(
     return computeHunterRank(
         physiqueScore = physiqueScore,
         strengthScore = strengthScore,
-        conditioningScore = null,
+        conditioningScore = computeConditioningScore(conditioning),
     )
 }

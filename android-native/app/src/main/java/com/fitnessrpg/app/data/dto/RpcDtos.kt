@@ -36,6 +36,8 @@ data class CompletionExerciseDto(
     @SerialName("exercise_score") val exerciseScore: Double?,
     @SerialName("performance_grade") val performanceGrade: String?,
     val sets: List<CompletionSetDto>,
+    @SerialName("difficulty_score") val difficultyScore: Double?,
+    @SerialName("difficulty_rank") val difficultyRank: String?,
 )
 
 @Serializable
@@ -54,6 +56,8 @@ data class CompletionSessionDto(
     @SerialName("gate_score") val gateScore: Double?,
     @SerialName("gate_clear_rank") val gateClearRank: String?,
     @SerialName("xp_earned") val xpEarned: Int?,
+    @SerialName("gate_difficulty_score") val gateDifficultyScore: Double?,
+    @SerialName("gate_difficulty_rank") val gateDifficultyRank: String?,
 )
 
 @Serializable
@@ -71,12 +75,12 @@ private fun CompletionSetPayload.toDto() = CompletionSetDto(
 )
 
 private fun CompletionExercisePayload.toDto() = CompletionExerciseDto(
-    exerciseId, orderIndex, notes, exerciseScore, performanceGrade, sets.map { it.toDto() },
+    exerciseId, orderIndex, notes, exerciseScore, performanceGrade, sets.map { it.toDto() }, difficultyScore, difficultyRank,
 )
 
 private fun CompletionSession.toDto() = CompletionSessionDto(
     id, templateId, name, gateDifficulty, startedAt, completedAt, durationSeconds, totalVolumeKg,
-    completionScore, progressScore, qualityScore, gateScore, gateClearRank, xpEarned,
+    completionScore, progressScore, qualityScore, gateScore, gateClearRank, xpEarned, gateDifficultyScore, gateDifficultyRank,
 )
 
 fun CompletionPayload.toDto() = CompletionPayloadDto(session.toDto(), exercises.map { it.toDto() })

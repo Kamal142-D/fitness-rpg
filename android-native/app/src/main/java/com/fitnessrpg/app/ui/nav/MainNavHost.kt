@@ -9,6 +9,7 @@ import com.fitnessrpg.app.ui.screens.main.HomeTabs
 import com.fitnessrpg.app.ui.screens.main.PlaceholderScreen
 import com.fitnessrpg.app.ui.screens.main.SettingsScreen
 import com.fitnessrpg.app.ui.screens.workout.GateDetailScreen
+import com.fitnessrpg.app.ui.screens.workout.GateBuilderScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutCompleteScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutScreen
 
@@ -34,12 +35,24 @@ fun MainNavHost(userId: String, onSignOut: () -> Unit) {
             )
         }
         composable("gate_new") {
-            PlaceholderScreen("New Gate", "The custom Gate builder is coming next.")
+            GateBuilderScreen(
+                userId = userId,
+                onBack = { nav.popBackStack() },
+                onSaved = { id -> nav.navigate("gate/$id") { popUpTo("home") } },
+            )
+        }
+        composable("gate_edit/{id}") { entry ->
+            val id = entry.arguments?.getString("id").orEmpty()
+            GateBuilderScreen(userId, templateId = id, onBack = { nav.popBackStack() }, onSaved = {
+                nav.navigate("gate/$it") { popUpTo("home") }
+            })
         }
         composable("gate/{id}") { entry ->
             GateDetailScreen(
+                userId = userId,
                 templateId = entry.arguments?.getString("id").orEmpty(),
                 onBack = { nav.popBackStack() },
+                onEdit = { nav.navigate("gate_edit/${entry.arguments?.getString("id").orEmpty()}") },
                 onStarted = {
                     nav.navigate("workout") { popUpTo("home") }
                 },

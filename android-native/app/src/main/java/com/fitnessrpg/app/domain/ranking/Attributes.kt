@@ -78,14 +78,10 @@ fun enduranceScore(weeklyTrainingMinutes: Double?): Double? {
 }
 
 /** Combined Hunter score, renormalized over available attributes. */
-fun hunterScore(attrs: HunterAttributes): Double = weightedRenormalized(
-    listOf(
-        WeightedComponent(attrs.strength, HunterWeights.STRENGTH),
-        WeightedComponent(attrs.physique, HunterWeights.PHYSIQUE),
-        WeightedComponent(attrs.endurance, HunterWeights.ENDURANCE),
-        WeightedComponent(attrs.discipline, HunterWeights.DISCIPLINE),
-    ),
-)
+@Deprecated("Use rankings.computeHunterRank; discipline is never physical rank input")
+fun hunterScore(attrs: HunterAttributes): Double = com.fitnessrpg.app.domain.rankings.computeHunterRank(
+    attrs.physique, attrs.strength, attrs.endurance,
+).hunterScore
 
 fun hunterRank(score: Double): Rank = scoreToRank(score)
 

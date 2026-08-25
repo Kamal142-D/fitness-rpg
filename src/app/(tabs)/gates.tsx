@@ -82,6 +82,11 @@ export default function GatesScreen() {
         variant="secondary"
         onPress={() => router.push('/gate/new')}
       />
+      <Button
+        label="Browse movement guide"
+        variant="secondary"
+        onPress={() => router.push('/exercise')}
+      />
     </Screen>
   );
 }

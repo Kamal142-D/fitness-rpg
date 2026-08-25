@@ -11,6 +11,15 @@ data class Exercise(
     val exerciseType: String?,
     val rankingEnabled: Boolean,
     val createdAt: String? = null,
+    val aliases: List<String> = emptyList(),
+    val bodyPart: String? = null,
+    val targetMuscle: String? = null,
+    val instructions: List<String> = emptyList(),
+    val imageUrl: String? = null,
+    val videoUrl: String? = null,
+    val source: String? = null,
+    val sourceId: String? = null,
+    val attribution: String? = null,
 )
 
 /** A Gate template (mirrors `workout_templates`). `difficulty` is raw text. */
@@ -24,6 +33,13 @@ data class GateTemplate(
     val isSystemTemplate: Boolean,
     val createdAt: String? = null,
     val updatedAt: String? = null,
+    val deletedAt: String? = null,
+    val lastDifficultyScore: Double? = null,
+    val lastDifficultyRank: String? = null,
+    val averageDifficultyScore: Double? = null,
+    val averageDifficultyRank: String? = null,
+    val timesCompleted: Int = 0,
+    val lastCompletedAt: String? = null,
 )
 
 /** A template's exercise slot with targets (mirrors `workout_template_exercises`). */
@@ -54,6 +70,5 @@ data class GateDetail(
 /** Input for creating a custom Gate. */
 data class CreateGateInput(
     val name: String,
-    val difficulty: com.fitnessrpg.app.domain.rank.Rank,
     val exerciseIds: List<String>,
 )

@@ -42,10 +42,10 @@ class AttributesTest {
 
     @Test
     fun `hunterScore applies attribute weights`() {
-        // 80*.4 + 60*.3 + 40*.15 + 60*.15 = 65
+        // V2 ignores discipline and applies the physical weak-link penalty.
         val score = hunterScore(HunterAttributes(80.0, 60.0, 40.0, 60.0))
-        assertEquals(65.0, score, 1e-4)
-        assertEquals(Rank.A, hunterRank(score))
+        assertEquals(58.4, score, 1e-4)
+        assertEquals(Rank.B, hunterRank(score))
     }
 
     @Test
@@ -55,7 +55,7 @@ class AttributesTest {
 
     @Test
     fun `hunterScore is neutral when nothing is known`() {
-        assertEquals(60.0, hunterScore(HunterAttributes(null, null, null, null)), 1e-9)
+        assertEquals(0.0, hunterScore(HunterAttributes(null, null, null, null)), 1e-9)
     }
 
     @Test

@@ -53,6 +53,7 @@ release-artifacts/
 # Workspace-local Android/Gradle build caches
 /.gradle-user/
 /.android-user/
+/.android-sdk/
 
 # Release binaries belong in GitHub Releases, not source control
 /release/*.apk

@@ -30,7 +30,7 @@ class WorkoutLogicTest {
         assertEquals(2, w.exercises[0].sets.size)
         assertEquals(5, w.exercises[0].sets[0].reps)
         assertNull(w.exercises[0].sets[0].weightKg)
-        assertEquals(Rank.C, w.gateDifficulty)
+        assertEquals(null, w.gateDifficulty)
         assertTrue(Regex("[0-9a-f-]{36}").containsMatchIn(w.sessionId))
     }
 

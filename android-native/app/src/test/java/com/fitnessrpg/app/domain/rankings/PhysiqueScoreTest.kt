@@ -23,12 +23,8 @@ class PhysiqueScoreTest {
 
     @Test
     fun `total muscle mass is NOT treated as skeletal muscle mass`() {
-        val asMuscleMass = computePhysiqueScore(body(muscleMass = 55.2))!!
-        val asSmm = computePhysiqueScore(body(smm = 55.2))!!
-        // 55.2/71.5 = 77% is impossible for SMM; treating it as SMM saturates to 100,
-        // while the conservative total-muscle-mass path scores clearly lower.
-        assertTrue(asSmm > asMuscleMass)
-        assertTrue(asMuscleMass < 95.0)
+        assertNull(computePhysiqueScore(body(muscleMass = 55.2)))
+        assertTrue(computePhysiqueScore(body(smm = 35.0))!! > 0.0)
     }
 
     @Test
@@ -51,5 +47,11 @@ class PhysiqueScoreTest {
     fun `the real user physique lands in a moderate range`() {
         val score = computePhysiqueScore(body(bodyFat = 18.0, muscleMass = 55.2))!!
         assertTrue("physique was $score", score in 60.0..80.0)
+    }
+
+    @Test fun `missing waist permanently caps regression case at B`() {
+        val result = computePhysiqueRank(body(bodyFat = 18.0, muscleMass = 55.2))
+        assertTrue(result.rank!!.ordinal <= com.fitnessrpg.app.domain.rank.Rank.B.ordinal)
+        assertTrue(result.rankCap == com.fitnessrpg.app.domain.rank.Rank.B)
     }
 }
