@@ -12,6 +12,7 @@ import com.fitnessrpg.app.ui.screens.workout.GateDetailScreen
 import com.fitnessrpg.app.ui.screens.workout.GateBuilderScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutCompleteScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutScreen
+import com.fitnessrpg.app.ui.screens.onboarding.AssessmentUpdateScreen
 
 /** Navigation for the authed area: tabs + settings + the gate/workout stack. */
 @Composable
@@ -25,6 +26,7 @@ fun MainNavHost(userId: String, onSignOut: () -> Unit) {
                 onOpenGate = { id -> if (id != null) nav.navigate("gate/$id") },
                 onOpenGates = { nav.navigate("gate_new") },
                 onSettings = { nav.navigate("settings") },
+                onAssessment = { nav.navigate("assessment") },
             )
         }
         composable("settings") {
@@ -32,6 +34,13 @@ fun MainNavHost(userId: String, onSignOut: () -> Unit) {
                 email = ServiceLocator.authRepository.currentUserEmail(),
                 onBack = { nav.popBackStack() },
                 onSignOut = onSignOut,
+            )
+        }
+        composable("assessment") {
+            AssessmentUpdateScreen(
+                userId = userId,
+                onBack = { nav.popBackStack() },
+                onSaved = { nav.popBackStack() },
             )
         }
         composable("gate_new") {

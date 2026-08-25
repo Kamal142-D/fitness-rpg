@@ -16,6 +16,7 @@ import androidx.core.net.toUri
 import com.fitnessrpg.app.BuildConfig
 import com.fitnessrpg.app.data.updates.ApkInstaller
 import com.fitnessrpg.app.data.updates.ReleaseApi
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.updates.RELEASES_PAGE_URL
 import com.fitnessrpg.app.domain.updates.ReleaseInfo
 import com.fitnessrpg.app.domain.updates.isNewerVersion
@@ -68,7 +69,7 @@ fun UpdateSection(modifier: Modifier = Modifier) {
                                 }
                             }
                             .onFailure {
-                                message = it.message ?: "Could not check for updates."
+                                message = friendlyDataError(it, "Could not check for updates.")
                                 status = UpdateStatus.ERROR
                             }
                     }
@@ -88,7 +89,7 @@ fun UpdateSection(modifier: Modifier = Modifier) {
                                 status = UpdateStatus.INSTALLING
                                 runCatching { ApkInstaller.downloadAndInstall(context, apkUrl) }
                                     .onFailure {
-                                        message = it.message ?: "Update failed."
+                                        message = friendlyDataError(it, "Update failed.")
                                         status = UpdateStatus.ERROR
                                     }
                             }

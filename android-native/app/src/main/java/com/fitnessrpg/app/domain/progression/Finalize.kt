@@ -2,12 +2,7 @@ package com.fitnessrpg.app.domain.progression
 
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.ranking.DisciplineInput
-import com.fitnessrpg.app.domain.ranking.PhysiqueInput
 import com.fitnessrpg.app.domain.ranking.disciplineScore
-import com.fitnessrpg.app.domain.rankings.BodyCompositionData
-import com.fitnessrpg.app.domain.rankings.computeHunterRank
-import com.fitnessrpg.app.domain.rankings.computePhysiqueScore
-import com.fitnessrpg.app.domain.rankings.computeStrengthScoreFromEstimated1RMs
 
 /**
  * Build the durable progression snapshot persisted after a workout. Hunter Rank
@@ -25,38 +20,11 @@ data class AttributeInputs(
     val discipline: Double?,
 )
 
-data class FinishExercise(val name: String, val best1RMkg: Double?)
-
-data class FinishInputs(
-    val bodyweightKg: Double?,
-    val heightCm: Double?,
-    val sex: String?,
-    val exercises: List<FinishExercise>,
-    val assessment: PhysiqueInput?,
-)
-
-/** Recompute the physical pillars after a workout (pure). Conditioning is not yet
- *  assessable, so it stays unknown (null) — the rank engine treats that as provisional. */
-fun computeAttributes(inputs: FinishInputs, newStreakDays: Int): AttributeInputs {
-    val strengthItems = inputs.exercises.mapNotNull { e -> e.best1RMkg?.let { e.name to it } }
-    val strength = computeStrengthScoreFromEstimated1RMs(strengthItems, inputs.bodyweightKg ?: 0.0, inputs.sex)
-
-    val physique = inputs.assessment?.let { a ->
-        computePhysiqueScore(
-            BodyCompositionData(
-                weightKg = a.weightKg ?: inputs.bodyweightKg ?: 0.0,
-                heightCm = inputs.heightCm ?: 0.0,
-                bodyFatPercent = a.bodyFatPercent,
-                // Never treat the ambiguous stored value as skeletal muscle mass.
-                skeletalMuscleMassKg = null,
-                sex = inputs.sex,
-            ),
-        )
-    }
-
+/** Workout completion updates discipline only. Physical pillars are assessment-owned. */
+fun computeWorkoutAttributes(newStreakDays: Int): AttributeInputs {
     return AttributeInputs(
-        strength = strength,
-        physique = physique,
+        strength = null,
+        physique = null,
         endurance = null,
         discipline = disciplineScore(DisciplineInput(newStreakDays, 1.0)),
     )
@@ -67,6 +35,8 @@ data class CurrentAttributes(
     val physique: Double,
     val endurance: Double,
     val discipline: Double,
+    val hunterScore: Double = 0.0,
+    val hunterRank: Rank = Rank.E,
 )
 
 data class StreakSnapshot(val current: Int, val longest: Int)
@@ -101,14 +71,6 @@ fun buildProgressionUpdate(input: ProgressionUpdateInput): ProgressionPersistPay
     val resolvedEndurance = input.attributes.endurance ?: input.currentAttributes.endurance
     val resolvedDiscipline = input.attributes.discipline ?: input.currentAttributes.discipline
 
-    // A 0 score means "no data" for the pillar — treat as unknown for the rank engine.
-    fun known(v: Double): Double? = if (v > 0.0) v else null
-    val hunter = computeHunterRank(
-        physiqueScore = known(resolvedPhysique),
-        strengthScore = known(resolvedStrength),
-        conditioningScore = null,
-    )
-
     return ProgressionPersistPayload(
         level = xp.level,
         currentXp = xp.currentXp,
@@ -117,8 +79,10 @@ fun buildProgressionUpdate(input: ProgressionUpdateInput): ProgressionPersistPay
         physiqueScore = resolvedPhysique,
         enduranceScore = resolvedEndurance,
         disciplineScore = resolvedDiscipline,
-        hunterScore = hunter.hunterScore,
-        hunterRank = hunter.rank,
+        // Workout completion changes XP/streaks and raw evidence. Hunter Rank is
+        // recalculated only by the assessment pipeline, never from lifetime PRs.
+        hunterScore = input.currentAttributes.hunterScore,
+        hunterRank = input.currentAttributes.hunterRank,
         currentStreakDays = input.streak.current,
         longestStreakDays = input.streak.longest,
     )

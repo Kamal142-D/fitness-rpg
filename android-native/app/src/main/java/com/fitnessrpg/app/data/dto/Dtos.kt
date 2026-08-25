@@ -131,6 +131,7 @@ data class ProgressionDto(
     @SerialName("strength_score") val strengthScore: Double = 0.0,
     @SerialName("physique_score") val physiqueScore: Double = 0.0,
     @SerialName("endurance_score") val enduranceScore: Double = 0.0,
+    @SerialName("conditioning_score") val conditioningScore: Double? = null,
     @SerialName("discipline_score") val disciplineScore: Double = 0.0,
     @SerialName("hunter_score") val hunterScore: Double = 60.0,
     @SerialName("hunter_rank") val hunterRank: String? = null,
@@ -145,7 +146,7 @@ data class ProgressionDto(
     fun toDomain() = PlayerProgression(
         level = level, currentXp = currentXp, lifetimeXp = lifetimeXp,
         strengthScore = strengthScore, physiqueScore = physiqueScore,
-        enduranceScore = enduranceScore, disciplineScore = disciplineScore,
+        enduranceScore = enduranceScore, conditioningScore = conditioningScore, disciplineScore = disciplineScore,
         hunterScore = hunterScore, hunterRank = rankOrDefault(hunterRank),
         currentStreakDays = currentStreakDays, longestStreakDays = longestStreakDays,
         hunterRankProvisional = hunterRankProvisional,
@@ -196,6 +197,14 @@ data class BodyAssessmentDto(
     @SerialName("body_fat_percent") val bodyFatPercent: Double? = null,
     @SerialName("skeletal_muscle_mass_kg") val skeletalMuscleMassKg: Double? = null,
     @SerialName("weight_kg") val weightKg: Double? = null,
+    @SerialName("waist_cm") val waistCm: Double? = null,
+    @SerialName("muscle_mass_kg") val muscleMassKg: Double? = null,
+    @SerialName("lean_body_mass_kg") val leanBodyMassKg: Double? = null,
+    @SerialName("left_arm_lean_mass_kg") val leftArmLeanMassKg: Double? = null,
+    @SerialName("right_arm_lean_mass_kg") val rightArmLeanMassKg: Double? = null,
+    @SerialName("left_leg_lean_mass_kg") val leftLegLeanMassKg: Double? = null,
+    @SerialName("right_leg_lean_mass_kg") val rightLegLeanMassKg: Double? = null,
+    val source: String? = null,
     @SerialName("assessment_date") val assessmentDate: String? = null,
 )
 
@@ -232,8 +241,42 @@ data class ExerciseNameDto(val id: String, val name: String)
 @Serializable
 data class ProfileBasicsDto(
     val sex: String? = null,
+    @SerialName("date_of_birth") val dateOfBirth: String? = null,
     @SerialName("current_weight_kg") val currentWeightKg: Double? = null,
     @SerialName("height_cm") val heightCm: Double? = null,
+)
+
+@Serializable
+data class StrengthEvidenceDto(
+    @SerialName("session_id") val sessionId: String,
+    @SerialName("exercise_name") val exerciseName: String,
+    val equipment: String,
+    val variation: String = "standard",
+    @SerialName("weight_kg") val weightKg: Double,
+    val reps: Int,
+    val rpe: Double? = null,
+    @SerialName("performed_at") val performedAt: String,
+)
+
+@Serializable
+data class StrengthAssessmentSetDto(
+    val id: String,
+    @SerialName("exercise_id") val exerciseId: String,
+    val variation: String = "standard",
+    val equipment: String,
+    @SerialName("weight_kg") val weightKg: Double,
+    val reps: Int,
+    @SerialName("weight_mode") val weightMode: String? = null,
+    val rpe: Double? = null,
+    @SerialName("assessed_at") val assessedAt: String,
+)
+
+@Serializable
+data class ConditioningAssessmentDto(
+    @SerialName("test_type") val testType: String,
+    val result: Double,
+    val score: Double? = null,
+    @SerialName("assessed_at") val assessedAt: String,
 )
 
 /** Helper for exercise-stats used to compute finish inputs. */

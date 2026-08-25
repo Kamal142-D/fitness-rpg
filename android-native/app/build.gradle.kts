@@ -36,8 +36,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Bumped past the RN app's versionCode (1) so this is seen as newer.
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProp("SUPABASE_URL")}\"")

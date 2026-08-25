@@ -1,7 +1,7 @@
 package com.fitnessrpg.app.domain.rankings
 
-import com.fitnessrpg.app.domain.rank.scoreToRank
 import com.fitnessrpg.app.domain.rank.clampScore
+import com.fitnessrpg.app.domain.rank.scoreToRank
 import com.fitnessrpg.app.domain.ranking.Anchor
 import com.fitnessrpg.app.domain.ranking.interpolate
 
@@ -14,24 +14,60 @@ data class ConditioningInput(
     val workCapacityScore: Double? = null,
 )
 
-private val cooperMale = listOf(Anchor(1200.0, 5.0), Anchor(1800.0, 30.0), Anchor(2200.0, 50.0), Anchor(2600.0, 70.0), Anchor(3000.0, 88.0), Anchor(3400.0, 100.0))
-private val cooperFemale = listOf(Anchor(1000.0, 5.0), Anchor(1500.0, 30.0), Anchor(1900.0, 50.0), Anchor(2300.0, 70.0), Anchor(2700.0, 88.0), Anchor(3100.0, 100.0))
-private val runMinutes = listOf(Anchor(7.0, 100.0), Anchor(9.0, 85.0), Anchor(11.0, 68.0), Anchor(13.0, 50.0), Anchor(16.0, 28.0), Anchor(22.0, 5.0))
-private val recoveryHeartRate = listOf(Anchor(55.0, 100.0), Anchor(75.0, 85.0), Anchor(95.0, 65.0), Anchor(115.0, 42.0), Anchor(140.0, 10.0))
+private val cooperReference = listOf(Anchor(900.0, 0.0), Anchor(1400.0, 20.0), Anchor(1900.0, 40.0), Anchor(2300.0, 60.0), Anchor(2700.0, 80.0), Anchor(3200.0, 100.0))
+private val runMinutesReference = listOf(Anchor(7.0, 100.0), Anchor(9.0, 85.0), Anchor(11.0, 68.0), Anchor(13.0, 50.0), Anchor(16.0, 28.0), Anchor(22.0, 5.0))
+private val recoveryHeartRateReference = listOf(Anchor(55.0, 100.0), Anchor(75.0, 85.0), Anchor(95.0, 65.0), Anchor(115.0, 42.0), Anchor(140.0, 10.0), Anchor(180.0, 0.0))
 
+private fun conditioningAgeScale(age: Int): Double = when (age) {
+    in 13..39 -> 1.0
+    in 40..59 -> .94
+    in 60..120 -> .86
+    else -> Double.NaN
+}
+
+/** Normalize one standardized test by age and sex. Attendance is never an input. */
 fun computeConditioningRank(input: ConditioningInput?, todayEpochDay: Long? = null): ConditioningRankResult {
-    if (input == null || input.testType == null || input.result == null || input.ageYears == null || input.sex == null) {
+    if (input?.testType == null || input.result == null || input.ageYears == null || input.sex !in setOf("male", "female")) {
         return ConditioningRankResult(null, null, true, AssessmentConfidence.LOW, listOf("A standardized conditioning test has not been completed."))
     }
-    val raw = when (input.testType) {
-        ConditioningTestType.COOPER_12_MINUTE -> interpolate(if (input.sex == "female") cooperFemale else cooperMale, input.result)
-        ConditioningTestType.RUN_1_5_MILE -> interpolate(runMinutes, input.result)
-        ConditioningTestType.STEP_3_MINUTE -> interpolate(recoveryHeartRate, input.result)
+    val result = input.result
+    val plausible = when (input.testType) {
+        ConditioningTestType.COOPER_12_MINUTE -> result in 500.0..5000.0
+        ConditioningTestType.RUN_1_5_MILE -> result in 4.0..40.0
+        ConditioningTestType.STEP_3_MINUTE -> result in 35.0..220.0
     }
-    val ageAdjustment = ((input.ageYears - 30).coerceAtLeast(0) / 10) * 2.0
-    val score = clampScore(raw + ageAdjustment)
-    val stale = todayEpochDay != null && input.assessedAtEpochDay?.let { todayEpochDay - it > 90 } != false
-    return ConditioningRankResult(score, scoreToRank(score), stale, if (stale) AssessmentConfidence.LOW else AssessmentConfidence.MEDIUM, if (stale) listOf("Conditioning assessment update recommended.") else emptyList())
+    val ageScale = conditioningAgeScale(input.ageYears)
+    if (!plausible || !ageScale.isFinite()) {
+        return ConditioningRankResult(null, null, true, AssessmentConfidence.LOW, listOf("The conditioning result is outside the supported range."))
+    }
+
+    // Normalize onto an adult-male reference before interpolation. Distances are
+    // multiplied; times and recovery heart rate are divided because lower is better.
+    val sexScale = if (input.sex == "female") .86 else 1.0
+    val normalized = when (input.testType) {
+        ConditioningTestType.COOPER_12_MINUTE -> result / (sexScale * ageScale)
+        ConditioningTestType.RUN_1_5_MILE -> result * (sexScale * ageScale)
+        ConditioningTestType.STEP_3_MINUTE -> result * (sexScale * ageScale)
+    }
+    val raw = when (input.testType) {
+        ConditioningTestType.COOPER_12_MINUTE -> interpolate(cooperReference, normalized)
+        ConditioningTestType.RUN_1_5_MILE -> interpolate(runMinutesReference, normalized)
+        ConditioningTestType.STEP_3_MINUTE -> interpolate(recoveryHeartRateReference, normalized)
+    }
+    val score = clampScore(raw)
+    val stale = todayEpochDay != null && (input.assessedAtEpochDay == null || todayEpochDay - input.assessedAtEpochDay > RankingV2Config.CONDITIONING_VALID_DAYS)
+    val confidence = when {
+        stale -> AssessmentConfidence.LOW
+        input.assessedAtEpochDay != null -> AssessmentConfidence.HIGH
+        else -> AssessmentConfidence.MEDIUM
+    }
+    return ConditioningRankResult(
+        score = score,
+        rank = scoreToRank(score),
+        provisional = stale,
+        confidence = confidence,
+        reasons = if (stale) listOf("Conditioning assessment update recommended.") else emptyList(),
+    )
 }
 
 fun computeConditioningScore(input: ConditioningInput?): Double? = computeConditioningRank(input).score

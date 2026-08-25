@@ -34,16 +34,16 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
                     AppText("Rank ${result.rank.name}", variant = TextVariant.TITLE)
                     if (result.provisional) ProvisionalTag()
                 }
-                AppText("Calculated Hunter Score ${result.hunterScore.roundToInt()} / 100", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
+                AppText("Calculated Hunter Score ${result.hunterScore?.roundToInt()?.toString() ?: "—"} / 100", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
                 result.rankCap?.let { AppText("CURRENT RANK CAP  ${it.name}", variant = TextVariant.CAPTION, tone = TextTone.ACCENT, mono = true) }
             }
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             AppText("PHYSICAL ATTRIBUTES", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-            PillarRow("Physique", result.physiqueScore)
-            PillarRow("Strength", result.strengthScore)
-            PillarRow("Conditioning", result.conditioningScore)
+            PillarRow("Physique", result.physiqueScore, result.physique?.rank)
+            PillarRow("Strength", result.strengthScore, result.strength?.rank)
+            PillarRow("Conditioning", result.conditioningScore, result.conditioning?.rank)
         }
 
         result.limitingAttribute?.let { limiting ->
@@ -73,7 +73,7 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
 
         if (result.provisional) {
             AppText(
-                "Complete your conditioning assessment and more Gates to unlock your full Hunter Rank.",
+                "Complete missing or stale physical assessments to unlock your full Hunter Rank.",
                 variant = TextVariant.CAPTION,
                 tone = TextTone.SECONDARY,
                 modifier = Modifier.padding(top = Spacing.md),
@@ -97,13 +97,13 @@ private fun ProvisionalTag() {
 }
 
 @Composable
-private fun PillarRow(label: String, score: Double?) {
+private fun PillarRow(label: String, score: Double?, rank: com.fitnessrpg.app.domain.rank.Rank?) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
         if (score == null) {
             AppText("Not assessed", variant = TextVariant.LABEL, tone = TextTone.TERTIARY)
         } else {
-            AppText("${score.roundToInt()} — ${scoreToRank(score).name}", variant = TextVariant.LABEL, mono = true)
+            AppText("${(rank ?: scoreToRank(score)).name} — ${score.roundToInt()}", variant = TextVariant.LABEL, mono = true)
         }
     }
 }

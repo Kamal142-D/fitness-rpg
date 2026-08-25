@@ -6,7 +6,7 @@ import com.fitnessrpg.app.domain.rank.scoreToRank
 
 /**
  * Hunter attributes -> Hunter Rank (PLAN.txt §6.7-6.9). Strength/Physique/
- * Endurance/Discipline each 0..100, combined by [HunterWeights]. All models here
+ * Endurance/Discipline each 0..100. All models here
  * are PROVISIONAL and use healthy, non-punitive ranges — no medical claims.
  */
 data class HunterAttributes(
@@ -81,7 +81,7 @@ fun enduranceScore(weeklyTrainingMinutes: Double?): Double? {
 @Deprecated("Use rankings.computeHunterRank; discipline is never physical rank input")
 fun hunterScore(attrs: HunterAttributes): Double = com.fitnessrpg.app.domain.rankings.computeHunterRank(
     attrs.physique, attrs.strength, attrs.endurance,
-).hunterScore
+).hunterScore ?: 0.0
 
 fun hunterRank(score: Double): Rank = scoreToRank(score)
 

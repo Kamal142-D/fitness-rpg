@@ -36,6 +36,14 @@ fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
 
         UpdateSection(modifier = Modifier.fillMaxWidth())
 
+        AppCard {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                AppText("EXERCISE DATA & ATTRIBUTION", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                AppText("1,318 unique exercises imported from hasaneyldrm/exercises-dataset (MIT data/code).", variant = TextVariant.CAPTION)
+                AppText("Exercise media © Gym Visual. OpenGym uses the same underlying catalog, so it is not imported a second time.", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
+            }
+        }
+
         AppButton("Sign out", onClick = onSignOut, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
     }
 }

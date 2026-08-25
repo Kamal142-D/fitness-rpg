@@ -33,6 +33,10 @@ data class CompletionExercisePayload(
     val sets: List<CompletionSetPayload>,
     val difficultyScore: Double? = null,
     val difficultyRank: String? = null,
+    /** Template targets are carried only for local scoring; the RPC ignores them. */
+    val targetRepsMin: Int? = null,
+    val targetRepsMax: Int? = null,
+    val targetRpe: Double? = null,
 )
 
 data class CompletionSession(
@@ -117,6 +121,9 @@ fun buildCompletionPayload(
                 exerciseScore = null,
                 performanceGrade = null,
                 sets = sets,
+                targetRepsMin = ex.targetRepsMin,
+                targetRepsMax = ex.targetRepsMax,
+                targetRpe = ex.targetRpe,
             ),
         )
     }

@@ -20,6 +20,14 @@ enum class DumbbellWeightMode { PER_HAND, COMBINED }
 enum class AssessmentConfidence { LOW, MEDIUM, HIGH }
 enum class BodyAssessmentSource { INBODY, SMART_SCALE, MANUAL, OTHER }
 enum class ConditioningTestType { COOPER_12_MINUTE, RUN_1_5_MILE, STEP_3_MINUTE }
+enum class MovementPattern { HORIZONTAL_PUSH, KNEE_DOMINANT, HIP_HINGE, VERTICAL_PUSH, VERTICAL_PULL }
+
+data class SegmentalLeanMassData(
+    val leftArmKg: Double? = null,
+    val rightArmKg: Double? = null,
+    val leftLegKg: Double? = null,
+    val rightLegKg: Double? = null,
+)
 
 /**
  * Body-composition inputs. Each field is a DISTINCT measurement — muscleMassKg
@@ -38,6 +46,7 @@ data class BodyCompositionData(
     val ageYears: Int? = null,
     val source: BodyAssessmentSource? = null,
     val assessedAtEpochDay: Long? = null,
+    val segmentalLeanMass: SegmentalLeanMassData? = null,
     /** "male" | "female" | null (neutral). */
     val sex: String? = null,
 )
@@ -49,14 +58,15 @@ data class StrengthAssessmentInput(
     val equipment: Equipment,
     val weightKg: Double,
     val reps: Int,
-    /** Required when equipment == DUMBBELL. Defaults to PER_HAND when null. */
+    /** Required when equipment == DUMBBELL; null is intentionally unscorable. */
     val dumbbellWeightMode: DumbbellWeightMode? = null,
     val variation: String = "standard",
     val rpe: Double? = null,
     val performedAtEpochDay: Long? = null,
+    val sessionId: String? = null,
 )
 
-data class PhysiqueRankResult(val score: Double?, val rank: Rank?, val bodyCompositionScore: Double?, val muscularityScore: Double?, val waistScore: Double?, val balanceScore: Double?, val rankCap: Rank?, val provisional: Boolean, val reasons: List<String>)
+data class PhysiqueRankResult(val score: Double?, val rank: Rank?, val bodyCompositionScore: Double?, val muscularityScore: Double?, val waistScore: Double?, val balanceScore: Double?, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence = AssessmentConfidence.LOW, val stale: Boolean = false, val reasons: List<String>)
 data class StrengthRankResult(val score: Double?, val rank: Rank?, val movementScores: Map<String, Double>, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
 data class ConditioningRankResult(val score: Double?, val rank: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
 
@@ -80,7 +90,7 @@ data class NextRankInfo(
 /** The full result of a Hunter-rank computation, with explainability. */
 data class HunterRankResult(
     val rank: Rank,
-    val hunterScore: Double,
+    val hunterScore: Double?,
     val physiqueScore: Double?,
     val strengthScore: Double?,
     val conditioningScore: Double?,
@@ -90,4 +100,7 @@ data class HunterRankResult(
     val nextRank: NextRankInfo?,
     val rankCap: Rank? = null,
     val reasons: List<String> = emptyList(),
+    val physique: PhysiqueRankResult? = null,
+    val strength: StrengthRankResult? = null,
+    val conditioning: ConditioningRankResult? = null,
 )

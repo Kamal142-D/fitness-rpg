@@ -14,12 +14,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.gates.STARTER_GATE
 import com.fitnessrpg.app.domain.gates.templateToSuggestedGate
 import com.fitnessrpg.app.domain.model.GateTemplate
 import com.fitnessrpg.app.domain.model.PlayerProgression
 import com.fitnessrpg.app.domain.model.Profile
-import com.fitnessrpg.app.domain.rankings.hunterRankFromScores
+import com.fitnessrpg.app.domain.rankings.HunterRankResult
 import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
@@ -46,6 +47,7 @@ private sealed interface SystemUi {
         val profile: Profile?,
         val progression: PlayerProgression,
         val recommended: GateTemplate?,
+        val hunter: HunterRankResult,
     ) : SystemUi
 }
 
@@ -63,12 +65,13 @@ fun SystemScreen(
                 val profileD = async { ServiceLocator.profileRepository.getProfile(userId) }
                 val progD = async { ServiceLocator.progressionRepository.getProgression(userId) }
                 val recD = async { ServiceLocator.gateRepository.getRecommendedGate() }
+                val assessmentD = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
                 val progression = progD.await()
                 if (progression == null) SystemUi.NoData
-                else SystemUi.Loaded(profileD.await(), progression, recD.await())
+                else SystemUi.Loaded(profileD.await(), progression, recD.await(), assessmentD.await().hunter)
             }
         } catch (e: Exception) {
-            SystemUi.Error(e.message ?: "Something went wrong reaching the server.")
+            SystemUi.Error(friendlyDataError(e, "Something went wrong reaching the server."))
         }
     }
 
@@ -103,20 +106,21 @@ private fun Dashboard(s: SystemUi.Loaded, onEnterGate: (String?) -> Unit, onSett
             AppButton("Settings", onClick = onSettings, variant = ButtonVariant.GHOST)
         }
 
-        val hr = hunterRankFromScores(p.physiqueScore, p.strengthScore)
+        val hr = s.hunter
         AppCard {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                 RankBadge(hr.rank, size = RankBadgeSize.LG)
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                     AppText("PLAYER STATUS", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                     AppText("Rank ${hr.rank.name}${if (hr.provisional) " · Provisional" else ""}", variant = TextVariant.TITLE)
-                    AppText("Hunter score ${hr.hunterScore.roundToInt()}", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
+                    AppText("Hunter score ${hr.hunterScore?.roundToInt()?.toString() ?: "—"}", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
                 }
             }
             XpBar(p.level, p.currentXp, modifier = Modifier.padding(top = Spacing.lg).fillMaxWidth())
             Column(modifier = Modifier.padding(top = Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                AttributeRow("Strength", p.strengthScore)
-                AttributeRow("Physique", p.physiqueScore)
+                hr.strengthScore?.let { AttributeRow("Strength", it) }
+                hr.physiqueScore?.let { AttributeRow("Physique", it) }
+                hr.conditioningScore?.let { AttributeRow("Conditioning", it) }
             }
             if (hr.limitingAttribute != null) {
                 AppText("${hr.limitingAttribute!!.name.lowercase().replaceFirstChar { it.uppercase() }} is limiting your rank.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, modifier = Modifier.padding(top = Spacing.sm))

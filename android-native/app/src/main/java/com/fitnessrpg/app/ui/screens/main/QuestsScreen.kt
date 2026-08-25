@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.quests.UserQuestView
 import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
@@ -46,7 +47,7 @@ fun QuestsScreen() {
         val r = result
         when {
             r == null -> AppText("Loading Quests…", tone = TextTone.SECONDARY)
-            r.isFailure -> AppCard { AppText(r.exceptionOrNull()?.message ?: "Couldn't load Quests.", tone = TextTone.DANGER) }
+            r.isFailure -> AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load Quests."), tone = TextTone.DANGER) }
             r.getOrThrow().isEmpty() -> AppCard { AppText("No active quests right now. Check back tomorrow.", tone = TextTone.SECONDARY) }
             else -> r.getOrThrow().forEach { quest ->
                 QuestCard(quest, onClaim = {

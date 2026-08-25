@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.gates.muscleGroupsFor
 import com.fitnessrpg.app.domain.model.GateTemplate
 import com.fitnessrpg.app.ui.components.AppButton
@@ -53,7 +54,7 @@ fun GatesScreen(userId: String, onOpenGate: (String) -> Unit, onNewGate: () -> U
         when {
             r == null -> AppText("Loading Gates…", tone = TextTone.SECONDARY)
             r.isFailure -> {
-                AppCard { AppText(r.exceptionOrNull()?.message ?: "Couldn't load Gates.", tone = TextTone.DANGER) }
+                AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load Gates."), tone = TextTone.DANGER) }
                 AppButton("Retry", onClick = { reload++ }, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
             }
             else -> r.getOrThrow().forEach { GateRow(userId, it, onOpenGate) { reload++ } }

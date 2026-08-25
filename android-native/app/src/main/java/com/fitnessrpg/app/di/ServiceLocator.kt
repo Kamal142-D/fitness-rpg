@@ -3,6 +3,7 @@ package com.fitnessrpg.app.di
 import com.fitnessrpg.app.data.auth.AuthRepository
 import com.fitnessrpg.app.data.local.ActiveWorkoutStore
 import com.fitnessrpg.app.data.repo.AnalyticsRepository
+import com.fitnessrpg.app.data.repo.AssessmentRepository
 import com.fitnessrpg.app.data.repo.GateRepository
 import com.fitnessrpg.app.data.repo.PrRepository
 import com.fitnessrpg.app.data.repo.ProfileRepository
@@ -22,6 +23,7 @@ object ServiceLocator {
     val progressionRepository: ProgressionRepository by lazy { ProgressionRepository() }
     val questRepository: QuestRepository by lazy { QuestRepository() }
     val analyticsRepository: AnalyticsRepository by lazy { AnalyticsRepository() }
+    val assessmentRepository: AssessmentRepository by lazy { AssessmentRepository() }
     val profileRepository: ProfileRepository by lazy { ProfileRepository() }
     val activeWorkoutStore: ActiveWorkoutStore by lazy { ActiveWorkoutStore() }
 }

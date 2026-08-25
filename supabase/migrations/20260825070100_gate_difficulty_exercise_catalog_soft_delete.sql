@@ -50,6 +50,7 @@ create table if not exists public.hidden_system_templates (
   primary key (user_id, template_id)
 );
 alter table public.hidden_system_templates enable row level security;
+drop policy if exists "hidden_system_templates_all_own" on public.hidden_system_templates;
 create policy "hidden_system_templates_all_own" on public.hidden_system_templates
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 

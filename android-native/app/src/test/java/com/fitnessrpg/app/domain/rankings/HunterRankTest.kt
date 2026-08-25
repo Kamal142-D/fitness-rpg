@@ -89,7 +89,7 @@ class HunterRankTest {
         val balanced = computeHunterRank(60.0, 60.0, 60.0).hunterScore
         val lopsided = computeHunterRank(90.0, 30.0, 60.0).hunterScore
         // Same-ish average, but the low strength weakest-penalty keeps lopsided lower.
-        assertTrue(lopsided < balanced + 5.0)
+        assertTrue(lopsided!! < balanced!! + 5.0)
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.fitnessrpg.app.domain.ranking
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.clampScore
 import com.fitnessrpg.app.domain.rank.scoreToRank
+import com.fitnessrpg.app.domain.rankings.scoreStrengthFromEstimated1RM
 
 /**
  * Permanent Exercise Rank (PLAN.txt §6.3) + anti-inflation upgrade guard (§6.6).
@@ -39,14 +40,12 @@ fun calculateExerciseRanking(input: ExerciseScoreInput, personalHistory: List<Do
  * scored (no strength standard for the movement, or missing bodyweight / 1RM).
  */
 fun exerciseScore(input: ExerciseScoreInput): Double? {
-    val movement = movementForExercise(input.exerciseName) ?: return null
     val orm = input.bestEstimated1rmKg
     val bodyweight = input.bodyweightKg
     if (orm == null || orm <= 0.0 || bodyweight == null || bodyweight <= 0.0) {
         return null
     }
-    val ratio = orm / bodyweight
-    return clampScore(interpolate(strengthAnchors(movement, input.sex), ratio))
+    return scoreStrengthFromEstimated1RM(input.exerciseName, orm, bodyweight, input.sex)
 }
 
 fun permanentExerciseRank(score: Double): Rank = scoreToRank(score)
@@ -65,8 +64,8 @@ fun nextExerciseRank(prev: Rank?, candidateScore: Double, qualifyingSessions: In
     if (prevIdx >= 0) {
         candIdx = minOf(candIdx, prevIdx + ValidationLimits.MAX_RANK_JUMP)
     }
-    if (ranks[candIdx] == Rank.S && qualifyingSessions < ValidationLimits.MIN_SESSIONS_FOR_S) {
-        candIdx = Rank.A.ordinal
+    if (ranks[candIdx].ordinal >= Rank.A.ordinal && qualifyingSessions < ValidationLimits.MIN_SESSIONS_FOR_S) {
+        candIdx = Rank.B.ordinal
     }
     return ranks[maxOf(prevIdx, candIdx)]
 }

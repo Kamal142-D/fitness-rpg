@@ -36,8 +36,8 @@ class ExerciseRankTest {
     }
 
     @Test
-    fun `requires two qualifying sessions to reach S`() {
-        assertEquals(Rank.A, nextExerciseRank(null, 90.0, 1))
+    fun `requires two qualifying sessions to reach A or S`() {
+        assertEquals(Rank.B, nextExerciseRank(null, 90.0, 1))
         assertEquals(Rank.S, nextExerciseRank(null, 90.0, 2))
     }
 

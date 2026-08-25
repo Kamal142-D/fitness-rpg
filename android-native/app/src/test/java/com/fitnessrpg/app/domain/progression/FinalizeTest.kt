@@ -6,11 +6,11 @@ import org.junit.Test
 
 class FinalizeTest {
     @Test
-    fun `applies XP with level-up and gates Hunter Rank on the pillars (no discipline)`() {
+    fun `applies XP while preserving assessment-owned Hunter Rank`() {
         val out = buildProgressionUpdate(
             ProgressionUpdateInput(
                 current = ProgressionSnapshot(1, 0, 0),
-                currentAttributes = CurrentAttributes(0.0, 0.0, 0.0, 0.0),
+                currentAttributes = CurrentAttributes(0.0, 0.0, 0.0, 0.0, 42.0, Rank.C),
                 xpEarned = 300,
                 streak = StreakSnapshot(3, 5),
                 attributes = AttributeInputs(strength = 70.0, physique = null, endurance = null, discipline = 80.0),
@@ -22,9 +22,8 @@ class FinalizeTest {
         assertEquals(70.0, out.strengthScore, 1e-9)
         assertEquals(80.0, out.disciplineScore, 1e-9)
         assertEquals(0.0, out.physiqueScore, 1e-9)
-        // Only strength is known + conditioning unknown -> provisional, capped at C.
-        // Discipline (80) does NOT lift the Hunter Rank.
-        assertEquals(70.0, out.hunterScore, 1e-9)
+        // Workout XP/discipline cannot rewrite the assessment-owned Hunter Rank.
+        assertEquals(42.0, out.hunterScore, 1e-9)
         assertEquals(Rank.C, out.hunterRank)
         assertEquals(3, out.currentStreakDays)
     }

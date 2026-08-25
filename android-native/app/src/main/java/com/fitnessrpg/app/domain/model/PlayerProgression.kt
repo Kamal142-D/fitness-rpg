@@ -10,6 +10,7 @@ data class PlayerProgression(
     val strengthScore: Double,
     val physiqueScore: Double,
     val enduranceScore: Double,
+    val conditioningScore: Double? = null,
     val disciplineScore: Double,
     val hunterScore: Double,
     val hunterRank: Rank,

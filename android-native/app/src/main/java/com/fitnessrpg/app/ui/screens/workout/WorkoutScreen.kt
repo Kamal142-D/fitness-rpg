@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fitnessrpg.app.data.workout.FinishWorkoutUseCase
 import com.fitnessrpg.app.data.workout.WorkoutResultHolder
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.gates.formatTargets
 import com.fitnessrpg.app.domain.gates.searchExercises
 import com.fitnessrpg.app.domain.model.ActiveExercise
@@ -139,7 +140,7 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
                             onFinished()
                         }
                         .onFailure {
-                            error = it.message ?: "Couldn't save your workout."
+                            error = friendlyDataError(it, "Couldn't save your workout.")
                             submitting = false
                         }
                 }

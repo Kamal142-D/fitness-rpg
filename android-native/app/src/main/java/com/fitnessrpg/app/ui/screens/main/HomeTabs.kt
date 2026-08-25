@@ -35,6 +35,7 @@ fun HomeTabs(
     onOpenGate: (gateId: String?) -> Unit,
     onOpenGates: () -> Unit,
     onSettings: () -> Unit,
+    onAssessment: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.SYSTEM) }
 
@@ -64,7 +65,7 @@ fun HomeTabs(
             when (tab) {
                 Tab.SYSTEM -> SystemScreen(userId, onEnterGate = onOpenGate, onSettings = onSettings)
                 Tab.GATES -> GatesScreen(userId, onOpenGate = { onOpenGate(it) }, onNewGate = onOpenGates)
-                Tab.PLAYER -> PlayerScreen(userId)
+                Tab.PLAYER -> PlayerScreen(userId, onAssessment)
                 Tab.QUESTS -> QuestsScreen()
             }
         }

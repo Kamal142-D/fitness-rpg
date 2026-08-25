@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.gates.CreateGateDraft
 import com.fitnessrpg.app.domain.gates.ExerciseFilters
 import com.fitnessrpg.app.domain.gates.searchExercises
@@ -112,7 +113,7 @@ fun GateBuilderScreen(userId: String, templateId: String? = null, onBack: () -> 
             runCatching {
                 if (templateId == null) ServiceLocator.gateRepository.createGate(userId, CreateGateInput(name, selected))
                 else { ServiceLocator.gateRepository.updateGate(templateId, CreateGateInput(name, selected)); templateId }
-            }.onSuccess(onSaved).onFailure { error = it.message ?: "Couldn't save Gate"; saving = false }
+            }.onSuccess(onSaved).onFailure { error = friendlyDataError(it, "Couldn't save Gate."); saving = false }
         }
     }
 }

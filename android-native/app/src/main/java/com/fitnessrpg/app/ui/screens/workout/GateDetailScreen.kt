@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.gates.formatTargets
 import com.fitnessrpg.app.domain.model.GateDetail
 import com.fitnessrpg.app.ui.components.AppButton
@@ -47,7 +48,7 @@ fun GateDetailScreen(userId: String, templateId: String, onBack: () -> Unit, onE
         val r = result
         when {
             r == null -> AppText("Loading Gate…", tone = TextTone.SECONDARY)
-            r.isFailure -> AppCard { AppText(r.exceptionOrNull()?.message ?: "Couldn't load this Gate.", tone = TextTone.DANGER) }
+            r.isFailure -> AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load this Gate."), tone = TextTone.DANGER) }
             r.getOrNull() == null -> AppCard { AppText("This Gate no longer exists.", tone = TextTone.SECONDARY) }
             else -> {
                 val detail = r.getOrThrow()!!

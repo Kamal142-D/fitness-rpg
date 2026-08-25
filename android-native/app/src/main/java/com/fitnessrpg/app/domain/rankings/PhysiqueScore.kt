@@ -4,50 +4,115 @@ import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.clampScore
 import com.fitnessrpg.app.domain.ranking.Anchor
 import com.fitnessrpg.app.domain.ranking.interpolate
+import kotlin.math.abs
+import kotlin.math.pow
 
-private val maleBodyFat = listOf(Anchor(4.0, 40.0), Anchor(8.0, 75.0), Anchor(12.0, 100.0), Anchor(16.0, 92.0), Anchor(20.0, 72.0), Anchor(25.0, 48.0), Anchor(35.0, 18.0))
-private val femaleBodyFat = listOf(Anchor(10.0, 40.0), Anchor(16.0, 75.0), Anchor(21.0, 100.0), Anchor(25.0, 92.0), Anchor(30.0, 70.0), Anchor(38.0, 40.0), Anchor(48.0, 15.0))
-private val maleFfmi = listOf(Anchor(15.0, 15.0), Anchor(18.0, 42.0), Anchor(20.0, 60.0), Anchor(22.0, 75.0), Anchor(24.0, 88.0), Anchor(26.0, 96.0))
-private val femaleFfmi = listOf(Anchor(12.0, 15.0), Anchor(15.0, 42.0), Anchor(17.0, 60.0), Anchor(19.0, 75.0), Anchor(21.0, 88.0), Anchor(23.0, 96.0))
-private val maleSmmPct = listOf(Anchor(25.0, 15.0), Anchor(32.0, 40.0), Anchor(38.0, 62.0), Anchor(44.0, 82.0), Anchor(50.0, 96.0))
-private val femaleSmmPct = listOf(Anchor(20.0, 15.0), Anchor(27.0, 40.0), Anchor(33.0, 62.0), Anchor(38.0, 82.0), Anchor(44.0, 96.0))
-private val bodyFatAgeAllowance = listOf(0..39 to 0.0, 40..59 to 2.0, 60..120 to 4.0)
-private val waistCurve = listOf(Anchor(0.38, 90.0), Anchor(0.42, 100.0), Anchor(0.47, 88.0), Anchor(0.50, 72.0), Anchor(0.55, 45.0), Anchor(0.65, 12.0))
-private data class Req(val overall: Int, val composition: Int, val muscularity: Int, val waist: Int)
-private val reqs = mapOf(Rank.E to Req(0,0,0,0), Rank.D to Req(20,15,10,10), Rank.C to Req(35,30,25,25), Rank.B to Req(50,45,45,40), Rank.A to Req(70,65,65,60), Rank.S to Req(85,80,80,75))
+private val balanceCurve = listOf(
+    Anchor(0.0, 100.0), Anchor(2.0, 95.0), Anchor(5.0, 75.0),
+    Anchor(10.0, 45.0), Anchor(15.0, 20.0), Anchor(25.0, 0.0),
+)
 
 fun calculateFfmi(weightKg: Double, heightCm: Double, bodyFatPercent: Double): Double? {
-    if (weightKg <= 0 || heightCm !in 120.0..230.0 || bodyFatPercent !in 3.0..60.0) return null
-    val h = heightCm / 100.0
-    return weightKg * (1.0 - bodyFatPercent / 100.0) / (h * h)
+    if (weightKg !in 30.0..300.0 || heightCm !in 100.0..250.0 || bodyFatPercent !in 3.0..60.0) return null
+    val heightM = heightCm / 100.0
+    return weightKg * (1.0 - bodyFatPercent / 100.0) / heightM.pow(2)
+}
+
+private fun pairAsymmetry(left: Double?, right: Double?): Double? {
+    if (left == null || right == null || left <= 0.0 || right <= 0.0) return null
+    return abs(left - right) / ((left + right) / 2.0) * 100.0
+}
+
+fun calculateMuscleBalanceScore(data: SegmentalLeanMassData?): Double? {
+    if (data == null) return null
+    val asymmetries = listOfNotNull(
+        pairAsymmetry(data.leftArmKg, data.rightArmKg),
+        pairAsymmetry(data.leftLegKg, data.rightLegKg),
+    )
+    if (asymmetries.isEmpty()) return null
+    return clampScore(interpolate(balanceCurve, asymmetries.average()))
 }
 
 fun computePhysiqueRank(body: BodyCompositionData, todayEpochDay: Long? = null): PhysiqueRankResult {
     val reasons = mutableListOf<String>()
+    if (body.weightKg !in 30.0..300.0 || body.heightCm !in 100.0..250.0) {
+        return PhysiqueRankResult(
+            score = null, rank = null, bodyCompositionScore = null, muscularityScore = null,
+            waistScore = null, balanceScore = null, rankCap = Rank.C, provisional = true,
+            confidence = AssessmentConfidence.LOW, reasons = listOf("Valid height and weight are required."),
+        )
+    }
+
     val female = body.sex == "female"
-    val ageAllowance = bodyFatAgeAllowance.firstOrNull { (range, _) -> (body.ageYears ?: 30) in range }?.second ?: 0.0
-    val composition = body.bodyFatPercent?.takeIf { it in 3.0..60.0 }?.let { clampScore(interpolate(if (female) femaleBodyFat else maleBodyFat, it - ageAllowance)) }
-    val ffmi = body.bodyFatPercent?.let { calculateFfmi(body.weightKg, body.heightCm, it) }
-        ?: body.leanBodyMassKg?.takeIf { it > 0 && body.heightCm in 120.0..230.0 }?.let { it / Math.pow(body.heightCm / 100.0, 2.0) }
-    val muscularity = ffmi?.let { clampScore(interpolate(if (female) femaleFfmi else maleFfmi, it)) }
-        ?: body.skeletalMuscleMassKg?.takeIf { it > 0 && it <= body.weightKg }?.let { clampScore(interpolate(if (female) femaleSmmPct else maleSmmPct, it / body.weightKg * 100.0)) }
-    val waist = body.waistCm?.takeIf { it in 40.0..200.0 && body.heightCm in 120.0..230.0 }?.let { clampScore(interpolate(waistCurve, it / body.heightCm)) }
-    val weighted = listOfNotNull(composition?.let { it to .30 }, muscularity?.let { it to .35 }, waist?.let { it to .25 })
-    val score = weighted.takeIf { it.isNotEmpty() }?.let { p -> clampScore(p.sumOf { it.first * it.second } / p.sumOf { it.second }) }
+    val sexKnown = female || body.sex == "male"
+    if (!sexKnown) reasons += "Sex-specific body-composition benchmarks are unavailable."
+    val ageBand = RankingV2Config.ageBands.firstOrNull { (body.ageYears ?: 30) in it.range }
+        ?: RankingV2Config.ageBands.first()
+
+    val validBodyFat = body.bodyFatPercent?.takeIf { it in 3.0..60.0 }
+    if (body.bodyFatPercent != null && validBodyFat == null) reasons += "Body-fat percentage is outside the plausible range."
+    val composition = if (sexKnown) validBodyFat?.let {
+        clampScore(interpolate(if (female) RankingV2Config.femaleBodyFat else RankingV2Config.maleBodyFat, it - ageBand.bodyFatAllowance))
+    } else null
+
+    val explicitLean = body.leanBodyMassKg?.takeIf { it > 0.0 && it <= body.weightKg }
+    val derivedLean = validBodyFat?.let { body.weightKg * (1.0 - it / 100.0) }
+    val ffmi = (explicitLean ?: derivedLean)?.let { it / (body.heightCm / 100.0).pow(2) }
+    val muscularity = if (!sexKnown) null else ffmi?.let {
+        clampScore(interpolate(if (female) RankingV2Config.femaleFfmi else RankingV2Config.maleFfmi, it))
+    } ?: body.skeletalMuscleMassKg?.takeIf { it > 0.0 && it <= body.weightKg }?.let {
+        clampScore(interpolate(if (female) RankingV2Config.femaleSmmPercent else RankingV2Config.maleSmmPercent, it / body.weightKg * 100.0))
+    }
+
+    val waist = body.waistCm?.takeIf { it in 40.0..200.0 }?.let {
+        clampScore(interpolate(RankingV2Config.waistToHeight, it / body.heightCm))
+    }
+    if (body.waistCm != null && waist == null) reasons += "Waist circumference is outside the plausible range."
+    val balance = calculateMuscleBalanceScore(body.segmentalLeanMass)
+
+    val components = listOfNotNull(
+        composition?.let { it to RankingV2Config.PHYSIQUE_COMPOSITION_WEIGHT },
+        muscularity?.let { it to RankingV2Config.PHYSIQUE_MUSCULARITY_WEIGHT },
+        waist?.let { it to RankingV2Config.PHYSIQUE_WAIST_WEIGHT },
+        balance?.let { it to RankingV2Config.PHYSIQUE_BALANCE_WEIGHT },
+    )
+    val score = components.takeIf { it.isNotEmpty() }?.let { values ->
+        clampScore(values.sumOf { it.first * it.second } / values.sumOf { it.second })
+    }
+
     var cap = Rank.S
-    if (composition == null) { cap = Rank.C; reasons += "Reliable body-fat data is missing." }
-    if (waist == null && cap.ordinal > Rank.B.ordinal) { cap = Rank.B; reasons += "Waist measurement is missing." }
-    if (muscularity == null) { cap = minOf(cap, Rank.C); reasons += "Muscularity could not be calculated." }
-    val stale = todayEpochDay != null && body.assessedAtEpochDay?.let { todayEpochDay - it > 90 } != false
+    if (composition == null) { cap = minOf(cap, Rank.C); reasons += "Reliable body-fat data is missing." }
+    if (waist == null) { cap = minOf(cap, Rank.B); reasons += "Waist measurement is missing." }
+    if (muscularity == null) { cap = minOf(cap, Rank.C); reasons += "Muscularity could not be calculated from FFMI or explicit SMM." }
+    if (balance == null) { cap = minOf(cap, Rank.A); reasons += "Segmental muscle-balance data is unavailable; S Physique is locked." }
+    if (body.muscleMassKg != null) reasons += "Generic muscle mass is retained as a separate metric and does not increase Physique Rank."
+
+    val stale = todayEpochDay != null && (body.assessedAtEpochDay == null || todayEpochDay - body.assessedAtEpochDay > RankingV2Config.BODY_ASSESSMENT_VALID_DAYS)
     if (stale) { cap = minOf(cap, Rank.A); reasons += "Body assessment update recommended." }
-    if (body.muscleMassKg != null) reasons += "Generic muscle mass does not increase Physique Rank."
+    val missingCore = composition == null || muscularity == null || waist == null
+    val confidence = when {
+        stale || missingCore -> AssessmentConfidence.LOW
+        balance != null && body.assessedAtEpochDay != null -> AssessmentConfidence.HIGH
+        else -> AssessmentConfidence.MEDIUM
+    }
+    val provisional = score == null || missingCore || stale
+
     var rank: Rank? = if (score == null) null else Rank.E
     if (score != null) for (candidate in Rank.entries) {
-        val r = reqs.getValue(candidate)
-        val waistPass = waist?.let { it >= r.waist } ?: (candidate.ordinal <= Rank.B.ordinal)
-        if (score >= r.overall && (composition ?: -1.0) >= r.composition && (muscularity ?: -1.0) >= r.muscularity && waistPass && candidate.ordinal <= cap.ordinal) rank = candidate
+        val req = RankingV2Config.physiqueRequirements.getValue(candidate)
+        val passesFloors = score >= req.overall &&
+            (composition == null || composition >= req.composition) &&
+            (muscularity == null || muscularity >= req.muscularity) &&
+            (waist == null || waist >= req.waist) &&
+            (req.balance == null || (balance ?: -1.0) >= req.balance)
+        if (passesFloors && candidate.ordinal <= cap.ordinal) rank = candidate
     }
-    return PhysiqueRankResult(score, rank, composition, muscularity, waist, null, cap, reasons.isNotEmpty(), reasons)
+
+    return PhysiqueRankResult(
+        score = score, rank = rank, bodyCompositionScore = composition, muscularityScore = muscularity,
+        waistScore = waist, balanceScore = balance, rankCap = cap, provisional = provisional,
+        confidence = confidence, stale = stale, reasons = reasons.distinct(),
+    )
 }
 
 fun computePhysiqueScore(body: BodyCompositionData): Double? = computePhysiqueRank(body).score

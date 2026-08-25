@@ -11,11 +11,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.produceState
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.analytics.PlayerData
 import com.fitnessrpg.app.domain.analytics.computeExerciseRanks
 import com.fitnessrpg.app.domain.analytics.monthlyComparison
 import com.fitnessrpg.app.domain.model.PlayerProgression
-import com.fitnessrpg.app.domain.rankings.hunterRankFromScores
+import com.fitnessrpg.app.data.repo.RankAssessmentSnapshot
+import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.HunterRankPanel
 import com.fitnessrpg.app.ui.components.AppText
@@ -33,13 +35,14 @@ import kotlinx.coroutines.coroutineScope
 import kotlin.math.roundToInt
 
 @Composable
-fun PlayerScreen(userId: String) {
-    val result by produceState<Result<Pair<PlayerProgression?, PlayerData>>?>(null, userId) {
+fun PlayerScreen(userId: String, onAssessment: () -> Unit) {
+    val result by produceState<Result<Triple<PlayerProgression?, PlayerData, RankAssessmentSnapshot>>?>(null, userId) {
         value = runCatching {
             coroutineScope {
                 val prog = async { ServiceLocator.progressionRepository.getProgression(userId) }
                 val data = async { ServiceLocator.analyticsRepository.getPlayerData(userId) }
-                prog.await() to data.await()
+                val assessment = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
+                Triple(prog.await(), data.await(), assessment.await())
             }
         }
     }
@@ -53,18 +56,19 @@ fun PlayerScreen(userId: String) {
         val r = result
         when {
             r == null -> AppText("Loading Player…", tone = TextTone.SECONDARY)
-            r.isFailure -> AppCard { AppText(r.exceptionOrNull()?.message ?: "Couldn't load your Player data.", tone = TextTone.DANGER) }
+            r.isFailure -> AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load your Player data."), tone = TextTone.DANGER) }
             else -> {
-                val (prog, data) = r.getOrThrow()
+                val (prog, data, assessment) = r.getOrThrow()
                 if (prog != null) {
-                    if (prog.assessmentUpdateRequired) {
+                    if (prog.assessmentUpdateRequired || assessment.hunter.provisional) {
                         AppCard {
                             AppText("SYSTEM ASSESSMENT UPDATE", variant = TextVariant.HEADING, tone = TextTone.ACCENT)
                             AppText("The Hunter Ranking System has been improved. Complete the missing physical assessments to improve rank accuracy.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                            AppButton("Complete assessment", onAssessment, modifier = Modifier.fillMaxWidth())
                         }
                     }
                     HunterRankPanel(
-                        hunterRankFromScores(prog.physiqueScore, prog.strengthScore),
+                        assessment.hunter,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     AppCard {

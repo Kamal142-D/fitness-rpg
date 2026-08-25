@@ -11,13 +11,14 @@ fun computeOnboardingHunterRank(
     strength: List<StrengthAssessmentInput>?,
     conditioning: ConditioningInput? = null,
 ): HunterRankResult {
-    val physiqueScore = computePhysiqueScore(body)
-    val strengthScore = strength
+    val physique = computePhysiqueRank(body)
+    val strengthResult = strength
         ?.takeIf { it.isNotEmpty() }
-        ?.let { computeStrengthScore(it, body.weightKg, body.sex) }
+        ?.let { computeStrengthRank(it, body.weightKg, body.sex, ageYears = body.ageYears) }
+    val conditioningResult = conditioning?.let(::computeConditioningRank)
     return computeHunterRank(
-        physiqueScore = physiqueScore,
-        strengthScore = strengthScore,
-        conditioningScore = computeConditioningScore(conditioning),
+        physique = physique,
+        strength = strengthResult,
+        conditioning = conditioningResult,
     )
 }

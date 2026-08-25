@@ -49,10 +49,17 @@ data class ProfileOnboardingUpdateDto(
 )
 
 @Serializable
+data class ProfilePhysicalUpdateDto(
+    @SerialName("height_cm") val heightCm: Double,
+    @SerialName("current_weight_kg") val currentWeightKg: Double,
+)
+
+@Serializable
 data class ProgressionInitUpdateDto(
     @SerialName("strength_score") val strengthScore: Double,
     @SerialName("physique_score") val physiqueScore: Double,
     @SerialName("endurance_score") val enduranceScore: Double,
+    @SerialName("conditioning_score") val conditioningScore: Double?,
     @SerialName("discipline_score") val disciplineScore: Double,
     @SerialName("hunter_score") val hunterScore: Double,
     @SerialName("hunter_rank") val hunterRank: String,
@@ -70,6 +77,11 @@ data class BodyAssessmentInsertDto(
     @SerialName("body_fat_percent") val bodyFatPercent: Double?,
     @SerialName("skeletal_muscle_mass_kg") val skeletalMuscleMassKg: Double?,
     @SerialName("waist_cm") val waistCm: Double?,
+    @SerialName("lean_body_mass_kg") val leanBodyMassKg: Double? = null,
+    @SerialName("left_arm_lean_mass_kg") val leftArmLeanMassKg: Double? = null,
+    @SerialName("right_arm_lean_mass_kg") val rightArmLeanMassKg: Double? = null,
+    @SerialName("left_leg_lean_mass_kg") val leftLegLeanMassKg: Double? = null,
+    @SerialName("right_leg_lean_mass_kg") val rightLegLeanMassKg: Double? = null,
     val source: String,
 )
 

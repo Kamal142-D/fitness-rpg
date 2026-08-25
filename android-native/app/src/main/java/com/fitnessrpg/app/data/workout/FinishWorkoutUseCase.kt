@@ -11,7 +11,7 @@ import com.fitnessrpg.app.domain.progression.ProgressionSnapshot
 import com.fitnessrpg.app.domain.progression.ProgressionUpdateInput
 import com.fitnessrpg.app.domain.progression.StreakSnapshot
 import com.fitnessrpg.app.domain.progression.buildProgressionUpdate
-import com.fitnessrpg.app.domain.progression.computeAttributes
+import com.fitnessrpg.app.domain.progression.computeWorkoutAttributes
 import com.fitnessrpg.app.domain.ranking.DayOutcome
 import com.fitnessrpg.app.domain.ranking.StreakState
 import com.fitnessrpg.app.domain.ranking.updateStreak
@@ -55,19 +55,29 @@ class FinishWorkoutUseCase {
             ServiceLocator.prRepository.getExerciseStats(exerciseIds)
         }.getOrDefault(emptyMap())
 
+        val gateBaselines = runCatching {
+            ServiceLocator.workoutRepository.getExerciseGateBaselines(exerciseIds)
+        }.getOrDefault(emptyMap())
+        val priorTemplateVolume = runCatching {
+            ServiceLocator.workoutRepository.getPriorTemplateVolume(payload.session.templateId)
+        }.getOrNull()
+
         val exerciseMetadata = runCatching { ServiceLocator.gateRepository.getExercises(exerciseIds) }.getOrDefault(emptyMap())
         val bodyWeightKg = runCatching { ServiceLocator.profileRepository.getProfile(userId)?.currentWeightKg }.getOrNull()
         val difficulty = calculateGateDifficulty(payload.exercises.map { ex ->
             val meta = exerciseMetadata[ex.exerciseId]
+            val recent = gateBaselines[ex.exerciseId]
             ExerciseDifficultyInput(
                 exerciseId = ex.exerciseId,
                 sets = ex.sets.map { DifficultySet(it.weightKg, it.reps, it.rpe, it.isWarmup) },
-                currentEstimated1rmKg = priorStats[ex.exerciseId]?.bestEstimated1rmKg,
+                currentEstimated1rmKg = recent?.recentBest1rmKg ?: priorStats[ex.exerciseId]?.bestEstimated1rmKg,
                 bodyWeightKg = bodyWeightKg,
                 equipment = meta?.equipment,
                 isMajorExercise = meta?.category !in setOf("arms", "core"),
+                recentAverageVolumeKg = recent?.averageVolumeKg,
+                priorSessionCount = recent?.sessionCount ?: 0,
             )
-        })
+        }, workoutDurationMinutes = aggregates.durationSeconds / 60.0)
 
         val detectExercises = payload.exercises.map { ex ->
             DetectExercise(
@@ -77,7 +87,7 @@ class FinishWorkoutUseCase {
             )
         }
         val detection = detectPRs(detectExercises, priorStats)
-        val gate = computeGateResult(payload, priorStats, aggregates, detection.prs.map { it.recordType }, difficulty)
+        val gate = computeGateResult(payload, priorStats, aggregates, detection.prs.map { it.recordType }, difficulty, priorTemplateVolume)
 
         val sessionId = ServiceLocator.workoutRepository.completeWorkout(augment(payload, gate))
 
@@ -86,7 +96,6 @@ class FinishWorkoutUseCase {
         runCatching {
             val prog = ServiceLocator.progressionRepository.getProgression(userId)
             if (prog != null) {
-                val inputs = ServiceLocator.progressionRepository.getFinishInputs(userId)
                 val newStreak = updateStreak(
                     StreakState(prog.currentStreakDays, prog.longestStreakDays),
                     DayOutcome(didTrain = true, isScheduledRest = false),
@@ -94,15 +103,18 @@ class FinishWorkoutUseCase {
                 val snapshot = buildProgressionUpdate(
                     ProgressionUpdateInput(
                         current = ProgressionSnapshot(prog.level, prog.currentXp, prog.lifetimeXp),
-                        currentAttributes = CurrentAttributes(prog.strengthScore, prog.physiqueScore, prog.enduranceScore, prog.disciplineScore),
+                        currentAttributes = CurrentAttributes(prog.strengthScore, prog.physiqueScore, prog.enduranceScore, prog.disciplineScore, prog.hunterScore, prog.hunterRank),
                         xpEarned = gate.xpEarned,
                         streak = StreakSnapshot(newStreak.current, newStreak.longest),
-                        attributes = computeAttributes(inputs, newStreak.current),
+                        attributes = computeWorkoutAttributes(newStreak.current),
                     ),
                 )
                 ServiceLocator.progressionRepository.applySessionProgression(sessionId, snapshot)
             }
         }
+        // Recalculate from the newly persisted, recent validated evidence. The
+        // strength engine uses multiple sessions for A/S and ignores lifetime PRs.
+        runCatching { ServiceLocator.assessmentRepository.recalculateAndPersist(userId) }
 
         return FinishResult(sessionId, aggregates, prioritizePRs(detection.prs), gate, exerciseMetadata.mapValues { it.value.name })
     }

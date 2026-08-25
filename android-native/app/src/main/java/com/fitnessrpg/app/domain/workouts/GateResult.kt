@@ -14,6 +14,8 @@ import com.fitnessrpg.app.domain.ranking.performanceGrade
 import com.fitnessrpg.app.domain.ranking.performanceScore
 import com.fitnessrpg.app.domain.ranking.prComponentScore
 import com.fitnessrpg.app.domain.ranking.qualityScore
+import com.fitnessrpg.app.domain.ranking.progressScore
+import com.fitnessrpg.app.domain.rank.clampScore
 
 /**
  * Compute the post-workout Gate result: Gate Score -> Gate Clear Rank,
@@ -44,6 +46,7 @@ fun computeGateResult(
     aggregates: CompletionAggregates,
     prRecordTypes: List<RecordType>,
     difficulty: GateDifficultyResult? = null,
+    priorSessionVolumeKg: Double? = null,
 ): GateResult {
     val perExercise = mutableListOf<PerExerciseResult>()
     val rpes = mutableListOf<Double?>()
@@ -54,7 +57,22 @@ fun computeGateResult(
 
         val todayBest = working.mapNotNull { it.estimated1rmKg }.maxOrNull()
         val baseline = priorStats[ex.exerciseId]?.bestEstimated1rmKg
-        val pScore = performanceScore(todayBest, baseline)
+        val targetScores = working.mapNotNull { set ->
+            val targetMin = ex.targetRepsMin ?: return@mapNotNull null
+            val targetMax = ex.targetRepsMax ?: targetMin
+            val reps = set.reps ?: return@mapNotNull null
+            val repScore = when {
+                reps < targetMin -> reps.toDouble() / targetMin * 80.0
+                reps <= targetMax -> 100.0
+                else -> 95.0
+            }
+            val effortScore = ex.targetRpe?.let { target ->
+                set.rpe?.let { clampScore(100.0 - kotlin.math.abs(it - target) * 15.0) }
+            }
+            if (effortScore == null) repScore else repScore * .75 + effortScore * .25
+        }
+        // Prescribed targets take precedence; a personal 1RM baseline is the fallback.
+        val pScore = targetScores.takeIf { it.isNotEmpty() }?.average() ?: performanceScore(todayBest, baseline)
         perExercise.add(PerExerciseResult(ex.exerciseId, pScore, performanceGrade(pScore)))
     }
 
@@ -64,8 +82,7 @@ fun computeGateResult(
 
     val completion = completionScore(aggregates.completedSets, aggregates.plannedWorkingSets)
     val quality = qualityScore(rpes)
-    // Progress vs recent sessions needs history; deferred (renormalized out).
-    val progress: Double? = null
+    val progress = progressScore(aggregates.totalVolumeKg, priorSessionVolumeKg)
     val pr = prComponentScore(prRecordTypes.size)
 
     val gateScore = computeGateScore(

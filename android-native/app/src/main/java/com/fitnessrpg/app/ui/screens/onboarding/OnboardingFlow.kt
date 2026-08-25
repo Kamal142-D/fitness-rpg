@@ -73,6 +73,11 @@ private val BODY_SOURCE_OPTIONS = listOf(
     ChoiceOption("Manual", BodyAssessmentSource.MANUAL), ChoiceOption("InBody", BodyAssessmentSource.INBODY),
     ChoiceOption("Smart scale", BodyAssessmentSource.SMART_SCALE), ChoiceOption("Other", BodyAssessmentSource.OTHER),
 )
+private val ONBOARDING_CONDITIONING_TESTS = listOf(
+    ChoiceOption("12-minute run", ConditioningTestType.COOPER_12_MINUTE),
+    ChoiceOption("1.5-mile run", ConditioningTestType.RUN_1_5_MILE),
+    ChoiceOption("3-minute step", ConditioningTestType.STEP_3_MINUTE),
+)
 
 private class Lift {
     var equipment by mutableStateOf(Equipment.BARBELL)
@@ -107,10 +112,12 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
     var waist by remember { mutableStateOf("") }
     var skeletalMuscleMass by remember { mutableStateOf("") }
     var bodySource by remember { mutableStateOf(BodyAssessmentSource.MANUAL) }
-    var cooperDistance by remember { mutableStateOf("") }
+    var conditioningType by remember { mutableStateOf(ConditioningTestType.COOPER_12_MINUTE) }
+    var conditioningValue by remember { mutableStateOf("") }
     var strengthSkipped by remember { mutableStateOf(false) }
     val bench = remember { Lift() }
     val squat = remember { Lift() }
+    val deadlift = remember { Lift() }
 
     var showErrors by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<HunterRankResult?>(null) }
@@ -130,7 +137,7 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
 
     fun strengthInputs(): List<StrengthAssessmentInput>? {
         if (strengthSkipped) return null
-        return listOfNotNull(bench.toInput("bench"), squat.toInput("squat")).ifEmpty { null }
+        return listOfNotNull(bench.toInput("bench"), squat.toInput("squat"), deadlift.toInput("deadlift")).ifEmpty { null }
     }
 
     fun draft() = OnboardingDraft(
@@ -147,8 +154,8 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
         bodyFatPercent = bodyFat.toDoubleOrNull(),
         waistCm = waist.toDoubleOrNull(),
         bodyAssessmentSource = bodySource.name.lowercase(),
-        conditioningTestType = cooperDistance.toDoubleOrNull()?.let { "cooper_12_minute" },
-        conditioningResult = cooperDistance.toDoubleOrNull(),
+        conditioningTestType = conditioningValue.toDoubleOrNull()?.let { conditioningType.name.lowercase() },
+        conditioningResult = conditioningValue.toDoubleOrNull(),
         strengthAssessmentSets = strengthInputs().orEmpty(),
         skeletalMuscleMassKg = skeletalMuscleMass.toDoubleOrNull(),
     )
@@ -166,7 +173,7 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
             wt != null && wt in 30.0..300.0 &&
             goal != null && experience != null && (days ?: 0) in 1..7 &&
             (bf == null || bf in 3.0..60.0) && (wc == null || wc in 40.0..200.0) &&
-            (smm == null || (smm > 0.0 && wt != null && smm <= wt))
+            (smm == null || (smm > 0.0 && smm <= wt))
     }
 
     val r = result
@@ -224,8 +231,14 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
 
         AppCard {
             SectionTitle("Conditioning assessment (optional)")
-            AppText("If available, enter distance covered in a 12-minute Cooper run. Leave blank to skip.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-            AppTextField(cooperDistance, { cooperDistance = it }, label = "12-minute distance (metres)", keyboardType = KeyboardType.Decimal)
+            AppText("Choose one standardized test, or leave the result blank to skip.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            ChoiceGroup(ONBOARDING_CONDITIONING_TESTS, conditioningType, { conditioningType = it })
+            val conditioningLabel = when (conditioningType) {
+                ConditioningTestType.COOPER_12_MINUTE -> "Distance in 12 minutes (metres)"
+                ConditioningTestType.RUN_1_5_MILE -> "1.5-mile time (minutes)"
+                ConditioningTestType.STEP_3_MINUTE -> "Recovery heart rate (bpm)"
+            }
+            AppTextField(conditioningValue, { conditioningValue = it }, label = conditioningLabel, keyboardType = KeyboardType.Decimal)
         }
 
         AppCard {
@@ -240,6 +253,7 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
             if (!strengthSkipped) {
                 LiftForm("Bench Press", bench)
                 LiftForm("Squat", squat)
+                LiftForm("Deadlift", deadlift)
             } else {
                 AppText("No problem — your rank will stay provisional until the System assesses your strength from your first Gates.", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
             }
@@ -265,8 +279,8 @@ fun OnboardingFlow(userId: String, onComplete: () -> Unit) {
             onClick = {
                 showErrors = true
                 if (valid()) result = computeOnboardingHunterRank(
-                    body(), strengthInputs(), cooperDistance.toDoubleOrNull()?.let {
-                        ConditioningInput(ConditioningTestType.COOPER_12_MINUTE, it, ageFromDob(dob), sex?.wire)
+                    body(), strengthInputs(), conditioningValue.toDoubleOrNull()?.let {
+                        ConditioningInput(conditioningType, it, ageFromDob(dob), sex?.wire)
                     },
                 )
             },
