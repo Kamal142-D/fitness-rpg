@@ -3,8 +3,9 @@ package com.fitnessrpg.app.ui.screens.main
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -24,7 +25,8 @@ import com.fitnessrpg.app.ui.theme.Palette
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     SYSTEM("System", Icons.Filled.Home),
-    GATES("Gates", Icons.Filled.List),
+    MARCH("March", Icons.AutoMirrored.Filled.DirectionsWalk),
+    GATES("Gates", Icons.AutoMirrored.Filled.List),
     PLAYER("Player", Icons.Filled.Person),
     QUESTS("Quests", Icons.Filled.Star),
 }
@@ -64,6 +66,7 @@ fun HomeTabs(
         Box(Modifier.padding(padding)) {
             when (tab) {
                 Tab.SYSTEM -> SystemScreen(userId, onEnterGate = onOpenGate, onSettings = onSettings)
+                Tab.MARCH -> DailyMarchScreen(userId)
                 Tab.GATES -> GatesScreen(userId, onOpenGate = { onOpenGate(it) }, onNewGate = onOpenGates)
                 Tab.PLAYER -> PlayerScreen(userId, onAssessment)
                 Tab.QUESTS -> QuestsScreen()

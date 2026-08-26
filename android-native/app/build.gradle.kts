@@ -36,8 +36,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Bumped past the RN app's versionCode (1) so this is seen as newer.
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProp("SUPABASE_URL")}\"")
@@ -118,6 +118,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.health.connect.client)
 
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.postgrest)

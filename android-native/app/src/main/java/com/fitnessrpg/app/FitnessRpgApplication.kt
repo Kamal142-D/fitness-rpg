@@ -1,6 +1,7 @@
 package com.fitnessrpg.app
 
 import android.app.Application
+import com.fitnessrpg.app.di.ServiceLocator
 
 /**
  * Application entry point. Dependency wiring (Supabase client, repositories,
@@ -9,6 +10,6 @@ import android.app.Application
 class FitnessRpgApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // ServiceLocator.init(this)  // wired in when the data layer lands.
+        ServiceLocator.init(this)
     }
 }
