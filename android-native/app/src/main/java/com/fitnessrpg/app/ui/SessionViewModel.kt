@@ -2,6 +2,7 @@ package com.fitnessrpg.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fitnessrpg.app.data.cache.DataCache
 import com.fitnessrpg.app.di.ServiceLocator
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,10 +58,15 @@ class SessionViewModel : ViewModel() {
 
     /** Called after the Awakening completes to move straight into the app. */
     fun onOnboardingComplete(userId: String) {
+        // Fresh account data — drop any cached System/Player values.
+        DataCache.invalidatePrefix("system:")
+        DataCache.invalidatePrefix("player:")
         _state.value = AppState.Ready(userId)
     }
 
     fun signOut() {
+        // Never let one account's cached data show for the next sign-in.
+        DataCache.clear()
         viewModelScope.launch { auth.signOut() }
     }
 }

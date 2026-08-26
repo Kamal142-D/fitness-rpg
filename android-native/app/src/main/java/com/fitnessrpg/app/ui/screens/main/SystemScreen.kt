@@ -35,21 +35,17 @@ import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.components.XpBar
 import com.fitnessrpg.app.ui.components.AttributeRow
 import com.fitnessrpg.app.ui.theme.Spacing
+import com.fitnessrpg.app.ui.util.rememberCached
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.roundToInt
 
-private sealed interface SystemUi {
-    data object Loading : SystemUi
-    data object NoData : SystemUi
-    data class Error(val message: String) : SystemUi
-    data class Loaded(
-        val profile: Profile?,
-        val progression: PlayerProgression,
-        val recommended: GateTemplate?,
-        val hunter: HunterRankResult,
-    ) : SystemUi
-}
+private data class SystemData(
+    val profile: Profile?,
+    val progression: PlayerProgression?,
+    val recommended: GateTemplate?,
+    val hunter: HunterRankResult,
+)
 
 @Composable
 fun SystemScreen(
@@ -57,56 +53,57 @@ fun SystemScreen(
     onEnterGate: (gateId: String?) -> Unit,
     onSettings: () -> Unit,
 ) {
-    var reload by remember { mutableIntStateOf(0) }
-    val state by produceState<SystemUi>(SystemUi.Loading, userId, reload) {
-        value = SystemUi.Loading
-        value = try {
-            coroutineScope {
-                val profileD = async { ServiceLocator.profileRepository.getProfile(userId) }
-                val progD = async { ServiceLocator.progressionRepository.getProgression(userId) }
-                val recD = async { ServiceLocator.gateRepository.getRecommendedGate() }
-                val assessmentD = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
-                val progression = progD.await()
-                if (progression == null) SystemUi.NoData
-                else SystemUi.Loaded(profileD.await(), progression, recD.await(), assessmentD.await().hunter)
-            }
-        } catch (e: Exception) {
-            SystemUi.Error(friendlyDataError(e, "Something went wrong reaching the server."))
+    val sys = rememberCached("system:$userId") {
+        coroutineScope {
+            val profileD = async { ServiceLocator.profileRepository.getProfile(userId) }
+            val progD = async { ServiceLocator.progressionRepository.getProgression(userId) }
+            val recD = async { ServiceLocator.gateRepository.getRecommendedGate() }
+            val assessmentD = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
+            SystemData(profileD.await(), progD.await(), recD.await(), assessmentD.await().hunter)
         }
     }
 
-    when (val s = state) {
-        SystemUi.Loading -> com.fitnessrpg.app.ui.screens.SplashScreen("Loading System")
-        is SystemUi.Error -> StateScreen(
-            "Couldn't load your System",
-            s.message,
-            "Retry",
-        ) { reload++ }
-        SystemUi.NoData -> StateScreen(
+    val d = sys.data
+    when {
+        d != null && d.progression != null ->
+            Dashboard(d.profile, d.progression, d.recommended, d.hunter, onEnterGate, onSettings)
+        d != null -> StateScreen(
             "No data yet",
             "Your progression hasn't been set up. Complete the Awakening to begin.",
             "Account & settings",
             onSettings,
         )
-        is SystemUi.Loaded -> Dashboard(s, onEnterGate, onSettings)
+        sys.error != null -> StateScreen(
+            "Couldn't load your System",
+            friendlyDataError(sys.error, "Something went wrong reaching the server."),
+            "Retry",
+        ) { sys.refresh() }
+        else -> com.fitnessrpg.app.ui.screens.SplashScreen("Loading System")
     }
 }
 
 @Composable
-private fun Dashboard(s: SystemUi.Loaded, onEnterGate: (String?) -> Unit, onSettings: () -> Unit) {
-    val p = s.progression
-    val gate = s.recommended?.let { templateToSuggestedGate(it) } ?: STARTER_GATE
+private fun Dashboard(
+    profile: Profile?,
+    progression: PlayerProgression,
+    recommended: GateTemplate?,
+    hunter: HunterRankResult,
+    onEnterGate: (String?) -> Unit,
+    onSettings: () -> Unit,
+) {
+    val p = progression
+    val gate = recommended?.let { templateToSuggestedGate(it) } ?: STARTER_GATE
 
     ScreenScaffold {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 AppText("SYSTEM", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                AppText(s.profile?.displayName ?: "Hunter", variant = TextVariant.DISPLAY)
+                AppText(profile?.displayName ?: "Hunter", variant = TextVariant.DISPLAY)
             }
             AppButton("Settings", onClick = onSettings, variant = ButtonVariant.GHOST)
         }
 
-        val hr = s.hunter
+        val hr = hunter
         AppCard {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                 RankBadge(hr.rank, size = RankBadgeSize.LG)
@@ -127,7 +124,7 @@ private fun Dashboard(s: SystemUi.Loaded, onEnterGate: (String?) -> Unit, onSett
             }
         }
 
-        GateCard(gate, onEnter = { onEnterGate(s.recommended?.id) })
+        GateCard(gate, onEnter = { onEnterGate(recommended?.id) })
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             StatChip("STREAK", "${p.currentStreakDays} d", modifier = Modifier.weight(1f))

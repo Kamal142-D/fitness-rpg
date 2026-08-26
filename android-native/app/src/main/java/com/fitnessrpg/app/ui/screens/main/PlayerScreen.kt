@@ -30,20 +30,19 @@ import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.components.XpBar
 import com.fitnessrpg.app.ui.theme.Spacing
+import com.fitnessrpg.app.ui.util.rememberCached
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.roundToInt
 
 @Composable
 fun PlayerScreen(userId: String, onAssessment: () -> Unit) {
-    val result by produceState<Result<Triple<PlayerProgression?, PlayerData, RankAssessmentSnapshot>>?>(null, userId) {
-        value = runCatching {
-            coroutineScope {
-                val prog = async { ServiceLocator.progressionRepository.getProgression(userId) }
-                val data = async { ServiceLocator.analyticsRepository.getPlayerData(userId) }
-                val assessment = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
-                Triple(prog.await(), data.await(), assessment.await())
-            }
+    val player = rememberCached("player:$userId") {
+        coroutineScope {
+            val prog = async { ServiceLocator.progressionRepository.getProgression(userId) }
+            val data = async { ServiceLocator.analyticsRepository.getPlayerData(userId) }
+            val assessment = async { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
+            Triple(prog.await(), data.await(), assessment.await())
         }
     }
 
@@ -53,12 +52,12 @@ fun PlayerScreen(userId: String, onAssessment: () -> Unit) {
             AppText("Player", variant = TextVariant.DISPLAY)
         }
 
-        val r = result
+        val t = player.data
         when {
-            r == null -> AppText("Loading Player…", tone = TextTone.SECONDARY)
-            r.isFailure -> AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load your Player data."), tone = TextTone.DANGER) }
+            t == null && player.error != null -> AppCard { AppText(friendlyDataError(player.error, "Couldn't load your Player data."), tone = TextTone.DANGER) }
+            t == null -> AppText("Loading Player…", tone = TextTone.SECONDARY)
             else -> {
-                val (prog, data, assessment) = r.getOrThrow()
+                val (prog, data, assessment) = t
                 if (prog != null) {
                     if (prog.assessmentUpdateRequired || assessment.hunter.provisional) {
                         AppCard {

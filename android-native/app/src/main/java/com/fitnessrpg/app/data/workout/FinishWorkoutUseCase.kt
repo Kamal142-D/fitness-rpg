@@ -1,5 +1,6 @@
 package com.fitnessrpg.app.data.workout
 
+import com.fitnessrpg.app.data.cache.DataCache
 import com.fitnessrpg.app.di.ServiceLocator
 import com.fitnessrpg.app.domain.pr.DetectExercise
 import com.fitnessrpg.app.domain.pr.DetectSet
@@ -115,6 +116,13 @@ class FinishWorkoutUseCase {
         // Recalculate from the newly persisted, recent validated evidence. The
         // strength engine uses multiple sessions for A/S and ignores lifetime PRs.
         runCatching { ServiceLocator.assessmentRepository.recalculateAndPersist(userId) }
+
+        // The workout changed XP, rank, gate difficulty and history — drop the
+        // cached screen data so the next open shows fresh values.
+        DataCache.invalidatePrefix("system:")
+        DataCache.invalidatePrefix("player:")
+        DataCache.invalidatePrefix("gates:")
+        DataCache.invalidate("quests")
 
         return FinishResult(sessionId, aggregates, prioritizePRs(detection.prs), gate, exerciseMetadata.mapValues { it.value.name })
     }

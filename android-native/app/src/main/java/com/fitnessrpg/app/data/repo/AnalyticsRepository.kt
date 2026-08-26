@@ -35,9 +35,6 @@ class AnalyticsRepository {
             db.from("exercise_user_stats").select(Columns.list("exercise_id", "best_estimated_1rm_kg"))
                 .decodeList<StatBestDto>()
         }
-        val exercisesD = async {
-            db.from("exercises").select(Columns.list("id", "name")).decodeList<ExerciseNameDto>()
-        }
         val profileD = async {
             db.from("profiles").select(Columns.list("sex", "current_weight_kg")) {
                 filter { eq("id", userId) }
@@ -57,14 +54,23 @@ class AnalyticsRepository {
             }.decodeList<BodyAssessmentDto>()
         }
 
-        val sessions = sessionsD.await()
         val stats = statsD.await()
-        val exercises = exercisesD.await()
-        val profile = profileD.await()
         val prs = prsD.await()
-        val weights = weightsD.await()
 
-        val nameById = exercises.associate { it.id to it.name }
+        // Only fetch the names for the exercises this user actually references —
+        // NOT the whole ~1,300-row catalog (which made every Player load slow).
+        val neededIds = (stats.map { it.exerciseId } + prs.map { it.exerciseId }).distinct()
+        val nameById = if (neededIds.isEmpty()) {
+            emptyMap()
+        } else {
+            db.from("exercises").select(Columns.list("id", "name")) {
+                filter { isIn("id", neededIds) }
+            }.decodeList<ExerciseNameDto>().associate { it.id to it.name }
+        }
+
+        val sessions = sessionsD.await()
+        val profile = profileD.await()
+        val weights = weightsD.await()
 
         PlayerData(
             sessions = sessions.map { it.toSummary() },

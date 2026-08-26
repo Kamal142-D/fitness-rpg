@@ -25,18 +25,15 @@ import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.theme.Spacing
+import com.fitnessrpg.app.ui.util.rememberCached
 import kotlinx.coroutines.launch
 
 private fun trim(v: Double): String = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
 
 @Composable
 fun QuestsScreen() {
-    var reload by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
-    val result by produceState<Result<List<UserQuestView>>?>(null, reload) {
-        value = null
-        value = runCatching { ServiceLocator.questRepository.listUserQuests() }
-    }
+    val quests = rememberCached("quests") { ServiceLocator.questRepository.listUserQuests() }
 
     ScreenScaffold {
         Column {
@@ -44,19 +41,19 @@ fun QuestsScreen() {
             AppText("Quests", variant = TextVariant.DISPLAY)
         }
 
-        val r = result
+        val data = quests.data
         when {
-            r == null -> AppText("Loading Quests…", tone = TextTone.SECONDARY)
-            r.isFailure -> AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load Quests."), tone = TextTone.DANGER) }
-            r.getOrThrow().isEmpty() -> AppCard { AppText("No active quests right now. Check back tomorrow.", tone = TextTone.SECONDARY) }
-            else -> r.getOrThrow().forEach { quest ->
+            data != null && data.isEmpty() -> AppCard { AppText("No active quests right now. Check back tomorrow.", tone = TextTone.SECONDARY) }
+            data != null -> data.forEach { quest ->
                 QuestCard(quest, onClaim = {
                     scope.launch {
                         runCatching { ServiceLocator.questRepository.claimQuest(quest.id) }
-                        reload++
+                        quests.refresh()
                     }
                 })
             }
+            quests.loading -> AppText("Loading Quests…", tone = TextTone.SECONDARY)
+            quests.error != null -> AppCard { AppText(friendlyDataError(quests.error, "Couldn't load Quests."), tone = TextTone.DANGER) }
         }
     }
 }

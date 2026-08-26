@@ -34,14 +34,11 @@ import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.theme.Spacing
+import com.fitnessrpg.app.ui.util.rememberCached
 
 @Composable
 fun GatesScreen(userId: String, onOpenGate: (String) -> Unit, onNewGate: () -> Unit) {
-    var reload by remember { mutableIntStateOf(0) }
-    val result by produceState<Result<List<GateTemplate>>?>(null, reload) {
-        value = null
-        value = runCatching { ServiceLocator.gateRepository.listGates() }
-    }
+    val gates = rememberCached("gates:$userId") { ServiceLocator.gateRepository.listGates() }
 
     ScreenScaffold {
         Column {
@@ -50,14 +47,14 @@ fun GatesScreen(userId: String, onOpenGate: (String) -> Unit, onNewGate: () -> U
         }
         AppButton("Create a custom Gate", onClick = onNewGate, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
 
-        val r = result
+        val data = gates.data
         when {
-            r == null -> AppText("Loading Gates…", tone = TextTone.SECONDARY)
-            r.isFailure -> {
-                AppCard { AppText(friendlyDataError(r.exceptionOrNull(), "Couldn't load Gates."), tone = TextTone.DANGER) }
-                AppButton("Retry", onClick = { reload++ }, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
+            data != null -> data.forEach { GateRow(userId, it, onOpenGate) { gates.refresh() } }
+            gates.loading -> AppText("Loading Gates…", tone = TextTone.SECONDARY)
+            gates.error != null -> {
+                AppCard { AppText(friendlyDataError(gates.error, "Couldn't load Gates."), tone = TextTone.DANGER) }
+                AppButton("Retry", onClick = { gates.refresh() }, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
             }
-            else -> r.getOrThrow().forEach { GateRow(userId, it, onOpenGate) { reload++ } }
         }
     }
 }
