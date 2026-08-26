@@ -45,6 +45,7 @@ fun GateBuilderScreen(userId: String, templateId: String? = null, onBack: () -> 
     var muscle by remember { mutableStateOf<String?>(null) }
     var equipment by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf<List<String>>(emptyList()) }
+    var guideExercise by remember { mutableStateOf<Exercise?>(null) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -90,18 +91,36 @@ fun GateBuilderScreen(userId: String, templateId: String? = null, onBack: () -> 
             else -> results.forEach { exercise ->
                 val added = exercise.id in selected
                 AppCard(Modifier.fillMaxWidth().clickable {
-                    selected = if (added) selected - exercise.id else (selected + exercise.id).distinct()
+                    guideExercise = exercise
                 }) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(Modifier.weight(1f)) {
                             AppText(exercise.name.uppercase(), variant = TextVariant.LABEL)
                             AppText(listOfNotNull(exercise.primaryMuscleGroup, exercise.equipment).joinToString(" · "), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                             if (exercise.secondaryMuscleGroups.isNotEmpty()) AppText("Secondary: ${exercise.secondaryMuscleGroups.take(3).joinToString(" · ")}", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
+                            AppText("Tap for image and instructions", variant = TextVariant.CAPTION, tone = TextTone.ACCENT)
                         }
-                        AppText(if (added) "ADDED" else "ADD", tone = if (added) TextTone.SUCCESS else TextTone.SECONDARY)
+                        AppButton(
+                            label = if (added) "Added" else "Add",
+                            onClick = {
+                                selected = if (added) selected - exercise.id else (selected + exercise.id).distinct()
+                            },
+                            variant = if (added) ButtonVariant.SECONDARY else ButtonVariant.GHOST,
+                        )
                     }
                 }
             }
+        }
+        guideExercise?.let { exercise ->
+            val added = exercise.id in selected
+            ExerciseGuideDialog(
+                exercise = exercise,
+                isAdded = added,
+                onToggleAdded = {
+                    selected = if (added) selected - exercise.id else (selected + exercise.id).distinct()
+                },
+                onDismiss = { guideExercise = null },
+            )
         }
         error?.let { AppText(it, tone = TextTone.DANGER) }
         AppButton("Save Gate", onClick = {
