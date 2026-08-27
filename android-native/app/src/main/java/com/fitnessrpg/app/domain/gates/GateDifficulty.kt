@@ -2,13 +2,13 @@ package com.fitnessrpg.app.domain.gates
 
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.scoreToRank
-import com.fitnessrpg.app.domain.rankings.RankingV2Config
+import com.fitnessrpg.app.domain.rankings.RankingV3Config
 
 data class GateDifficultyConfig(
-    val relativeIntensityWeight: Double = RankingV2Config.GATE_INTENSITY_WEIGHT,
-    val hardWorkingSetsWeight: Double = RankingV2Config.GATE_HARD_SETS_WEIGHT,
-    val volumeVsBaselineWeight: Double = RankingV2Config.GATE_VOLUME_WEIGHT,
-    val densityWeight: Double = RankingV2Config.GATE_DENSITY_WEIGHT,
+    val relativeIntensityWeight: Double = RankingV3Config.GATE_INTENSITY_WEIGHT,
+    val hardWorkingSetsWeight: Double = RankingV3Config.GATE_HARD_SETS_WEIGHT,
+    val volumeVsBaselineWeight: Double = RankingV3Config.GATE_VOLUME_WEIGHT,
+    val densityWeight: Double = RankingV3Config.GATE_DENSITY_WEIGHT,
     val targetIntensity: Double = .85,
     val hardSetIntensity: Double = .65,
     val hardSetRpe: Double = 7.0,
@@ -58,6 +58,23 @@ data class GateDifficultyResult(
 
 private fun clamp(value: Double): Double = value.coerceIn(0.0, 100.0)
 
+private fun validatedDifficultyRank(
+    score: Double,
+    provisional: Boolean,
+    intensity: Double,
+    hardSets: Double,
+    volume: Double,
+    density: Double,
+): Rank {
+    var rank = scoreToRank(score)
+    fun cap(max: Rank) { if (rank.ordinal > max.ordinal) rank = max }
+    if (provisional) cap(Rank.B)
+    if (rank.ordinal >= Rank.S.ordinal && (intensity < 85.0 || hardSets < 70.0 || volume < 70.0)) cap(Rank.A)
+    if (rank.ordinal >= Rank.S_PLUS.ordinal && (intensity < 92.0 || hardSets < 82.0 || volume < 82.0)) cap(Rank.S)
+    if (rank.ordinal >= Rank.SS.ordinal && (intensity < 96.0 || hardSets < 90.0 || volume < 90.0 || density < 80.0)) cap(Rank.S_PLUS)
+    if (rank == Rank.SSS && listOf(intensity, hardSets, volume, density).any { it < 97.0 }) cap(Rank.SS)
+    return rank
+}
 fun effectiveLoadKg(weightKg: Double?, bodyWeightKg: Double?, equipment: String?): Double {
     val entered = (weightKg ?: 0.0).coerceAtLeast(0.0)
     val bodyweight = equipment?.lowercase()?.let {
@@ -65,7 +82,6 @@ fun effectiveLoadKg(weightKg: Double?, bodyWeightKg: Double?, equipment: String?
     } == true
     return if (bodyweight) (bodyWeightKg ?: 0.0) + entered else entered
 }
-
 fun calculateSetIntensity(
     set: DifficultySet,
     currentEstimated1rmKg: Double?,
@@ -114,7 +130,7 @@ fun calculateExerciseDifficulty(input: ExerciseDifficultyInput, config: GateDiff
     return ExerciseDifficultyResult(input.exerciseId, score, scoreToRank(score), volume, intensityScore, hardSets, hardScore, volumeScore, provisional, working.size, input.recentAverageVolumeKg != null)
 }
 
-/** Exact V2 Gate formula: intensity 45%, hard sets 25%, personal volume 20%, density 10%. */
+/** Exact V3 Gate formula: intensity 45%, hard sets 25%, personal volume 20%, density 10%. */
 fun calculateGateDifficulty(
     inputs: List<ExerciseDifficultyInput>,
     config: GateDifficultyConfig = GateDifficultyConfig(),
@@ -138,5 +154,11 @@ fun calculateGateDifficulty(
             density * config.densityWeight,
     )
     val provisional = exercises.any { it.provisional } || workoutDurationMinutes == null
-    return GateDifficultyResult(score, scoreToRank(score), exercises, provisional, if (provisional) "low" else "high", intensity, hardSets, volume, density)
+    val rank = validatedDifficultyRank(score, provisional, intensity, hardSets, volume, density)
+    val confidence = when {
+        provisional -> "low"
+        exercises.all { it.volumeBaselineKnown } -> "high"
+        else -> "medium"
+    }
+    return GateDifficultyResult(score, rank, exercises, provisional, confidence, intensity, hardSets, volume, density)
 }

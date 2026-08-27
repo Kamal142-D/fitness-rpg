@@ -2,8 +2,10 @@ package com.fitnessrpg.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * The single dark theme, assembled from [Palette]. The app is dark-first, so we
@@ -13,8 +15,10 @@ import androidx.compose.runtime.Composable
 private val AppColorScheme = darkColorScheme(
     primary = Palette.Primary,
     onPrimary = Palette.Background,
-    secondary = Palette.Accent,
-    onSecondary = Palette.TextPrimary,
+    primaryContainer = Palette.PrimaryContainer,
+    onPrimaryContainer = Palette.Primary,
+    secondary = Palette.Primary,
+    onSecondary = Palette.Background,
     background = Palette.Background,
     onBackground = Palette.TextPrimary,
     surface = Palette.Surface1,
@@ -25,6 +29,13 @@ private val AppColorScheme = darkColorScheme(
     onError = Palette.TextPrimary,
     outline = Palette.HairlineStrong,
     outlineVariant = Palette.Hairline,
+    scrim = Palette.Scrim,
+)
+
+private val AppShapes = Shapes(
+    small = RoundedCornerShape(Radius.sm),
+    medium = RoundedCornerShape(Radius.md),
+    large = RoundedCornerShape(Radius.lg),
 )
 
 @Composable
@@ -35,6 +46,7 @@ fun FitnessRpgTheme(
     MaterialTheme(
         colorScheme = AppColorScheme,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content,
     )
 }

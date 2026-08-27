@@ -14,16 +14,15 @@ class GateScoreTest {
             GateScoreInput(performance = 80.0, completion = 100.0, progress = 60.0, pr = 50.0, quality = 60.0),
         )
         assertEquals(79.0, score, 1e-4)
-        assertEquals(Rank.A, gateClearRank(score))
+        assertEquals(Rank.A, validatedGateClearRank(score, true, 1, 100.0, 80.0, 60.0))
     }
 
     @Test
-    fun `renormalizes when a factor is missing instead of scoring zero`() {
-        // Drop progress: remaining components are renormalized.
+    fun `missing evidence contributes zero instead of free neutral points`() {
         val score = computeGateScore(
             GateScoreInput(performance = 80.0, completion = 100.0, progress = null, pr = 50.0, quality = 60.0),
         )
-        assertEquals(85.333333, score, 1e-4)
+        assertEquals(64.0, score, 1e-4)
     }
 
     @Test
@@ -35,8 +34,8 @@ class GateScoreTest {
     }
 
     @Test
-    fun `returns the neutral score when every factor is missing`() {
-        assertEquals(60.0, weightedRenormalized(listOf(WeightedComponent(null, 1.0))), 1e-9)
+    fun `returns zero when every Gate factor is missing`() {
+        assertEquals(0.0, computeGateScore(GateScoreInput(null, null, null, null, null)), 1e-9)
     }
 
     @Test
@@ -55,9 +54,9 @@ class GateScoreTest {
 
     @Test
     fun `prComponentScore rewards PRs without punishing their absence`() {
-        assertEquals(50.0, prComponentScore(0), 1e-9)
-        assertEquals(72.0, prComponentScore(1), 1e-9)
-        assertEquals(86.0, prComponentScore(2), 1e-9)
+        assertEquals(0.0, prComponentScore(0), 1e-9)
+        assertEquals(60.0, prComponentScore(1), 1e-9)
+        assertEquals(82.0, prComponentScore(2), 1e-9)
         assertEquals(100.0, prComponentScore(5), 1e-9)
     }
 

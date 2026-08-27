@@ -25,17 +25,26 @@ object DataCache {
         entries[key] = Entry(value, System.currentTimeMillis())
     }
 
+    /** Put a value with an explicit timestamp (used when hydrating from disk so the
+     *  original age is preserved for staleness checks). */
+    fun putWithTime(key: String, value: Any?, loadedAt: Long) {
+        entries[key] = Entry(value, loadedAt)
+    }
+
     fun invalidate(key: String) {
         entries.remove(key)
+        PersistentCache.deletePrefixAsync(key)
     }
 
     /** Drop every cached entry whose key starts with [prefix] (e.g. "player:"). */
     fun invalidatePrefix(prefix: String) {
         entries.keys.removeAll { it.startsWith(prefix) }
+        PersistentCache.deletePrefixAsync(prefix)
     }
 
     /** Clear everything — call on sign-out so no data bleeds between accounts. */
     fun clear() {
         entries.clear()
+        PersistentCache.clearAsync()
     }
 }

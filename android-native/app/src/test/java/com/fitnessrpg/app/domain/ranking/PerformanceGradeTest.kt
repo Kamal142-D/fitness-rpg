@@ -1,15 +1,14 @@
 package com.fitnessrpg.app.domain.ranking
 
-import com.fitnessrpg.app.domain.rank.Rank
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PerformanceGradeTest {
 
     @Test
-    fun `is neutral with no baseline or no valid effort`() {
-        assertEquals(60.0, performanceScore(120.0, null), 1e-9)
-        assertEquals(60.0, performanceScore(null, 100.0), 1e-9)
+    fun `is unscored with no baseline or no valid effort`() {
+        assertEquals(0.0, performanceScore(120.0, null), 1e-9)
+        assertEquals(0.0, performanceScore(null, 100.0), 1e-9)
     }
 
     @Test
@@ -20,8 +19,9 @@ class PerformanceGradeTest {
     }
 
     @Test
-    fun `maps to a grade letter`() {
-        assertEquals(Rank.A, performanceGrade(performanceScore(100.0, 100.0))) // 65 -> A
-        assertEquals(Rank.C, performanceGrade(performanceScore(90.0, 100.0))) // 40 -> C
+    fun `uses words and never a temporary rank letter`() {
+        assertEquals("Baseline", todayPerformanceLabel(100.0, null))
+        assertEquals("Normal", todayPerformanceLabel(100.0, 100.0))
+        assertEquals("PR", todayPerformanceLabel(110.0, 100.0, isPr = true))
     }
 }

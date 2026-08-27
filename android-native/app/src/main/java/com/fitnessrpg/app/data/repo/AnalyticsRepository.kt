@@ -24,7 +24,7 @@ class AnalyticsRepository {
     suspend fun getPlayerData(userId: String): PlayerData = coroutineScope {
         val sessionsD = async {
             db.from("workout_sessions").select(
-                Columns.list("id", "name", "completed_at", "gate_clear_rank", "total_volume_kg", "duration_seconds"),
+                Columns.list("id", "name", "completed_at", "gate_clear_rank", "gate_difficulty_rank", "total_volume_kg", "duration_seconds"),
             ) {
                 filter { eq("status", "completed") }
                 order("completed_at", Order.DESCENDING)

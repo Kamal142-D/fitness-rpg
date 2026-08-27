@@ -18,7 +18,7 @@ class StrengthScoreTest {
     @Test
     fun `weak barbell bench scores low`() {
         val s = scoreStrengthMovement(bench(24.0, 8), 71.5, "male")!!
-        assertTrue("bench was $s", s in 12.0..24.0)
+        assertTrue("bench was $s", s in 5.0..15.0)
     }
 
     @Test

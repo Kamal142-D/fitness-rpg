@@ -34,12 +34,17 @@ import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.components.XpBar
 import com.fitnessrpg.app.ui.components.AttributeRow
+import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.components.SectionHeader
+import com.fitnessrpg.app.ui.components.StatusPill
+import com.fitnessrpg.app.ui.components.SystemMark
 import com.fitnessrpg.app.ui.theme.Spacing
 import com.fitnessrpg.app.ui.util.rememberCached
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.roundToInt
 
+@kotlinx.serialization.Serializable
 private data class SystemData(
     val profile: Profile?,
     val progression: PlayerProgression?,
@@ -52,8 +57,9 @@ fun SystemScreen(
     userId: String,
     onEnterGate: (gateId: String?) -> Unit,
     onSettings: () -> Unit,
+    onOpenPlan: () -> Unit,
 ) {
-    val sys = rememberCached("system:$userId") {
+    val sys = rememberCached("system:$userId", SystemData.serializer()) {
         coroutineScope {
             val profileD = async { ServiceLocator.profileRepository.getProfile(userId) }
             val progD = async { ServiceLocator.progressionRepository.getProgression(userId) }
@@ -66,7 +72,7 @@ fun SystemScreen(
     val d = sys.data
     when {
         d != null && d.progression != null ->
-            Dashboard(d.profile, d.progression, d.recommended, d.hunter, onEnterGate, onSettings)
+            Dashboard(userId, d.profile, d.progression, d.recommended, d.hunter, onEnterGate, onSettings, onOpenPlan)
         d != null -> StateScreen(
             "No data yet",
             "Your progression hasn't been set up. Complete the Awakening to begin.",
@@ -84,35 +90,40 @@ fun SystemScreen(
 
 @Composable
 private fun Dashboard(
+    userId: String,
     profile: Profile?,
     progression: PlayerProgression,
     recommended: GateTemplate?,
     hunter: HunterRankResult,
     onEnterGate: (String?) -> Unit,
     onSettings: () -> Unit,
+    onOpenPlan: () -> Unit,
 ) {
     val p = progression
     val gate = recommended?.let { templateToSuggestedGate(it) } ?: STARTER_GATE
 
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                AppText("SYSTEM", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                AppText(profile?.displayName ?: "Hunter", variant = TextVariant.DISPLAY)
-            }
-            AppButton("Settings", onClick = onSettings, variant = ButtonVariant.GHOST)
-        }
+        ScreenHeader(
+            eyebrow = "System online",
+            title = profile?.displayName ?: "Hunter",
+            subtitle = "Your next objective is ready.",
+            action = { AppButton("Settings", onClick = onSettings, variant = ButtonVariant.GHOST) },
+        )
 
         val hr = hunter
         AppCard {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                RankBadge(hr.rank, size = RankBadgeSize.LG)
+                SystemMark()
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                     AppText("PLAYER STATUS", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                    AppText("Rank ${hr.rank.name}${if (hr.provisional) " · Provisional" else ""}", variant = TextVariant.TITLE)
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                        RankBadge(hr.rank, size = RankBadgeSize.MD)
+                        AppText("Hunter rank ${hr.rank.wire}", variant = TextVariant.TITLE)
+                    }
                     AppText("Hunter score ${hr.hunterScore?.roundToInt()?.toString() ?: "—"}", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
                 }
             }
+            if (hr.provisional) StatusPill("Provisional")
             XpBar(p.level, p.currentXp, modifier = Modifier.padding(top = Spacing.lg).fillMaxWidth())
             Column(modifier = Modifier.padding(top = Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 hr.strengthScore?.let { AttributeRow("Strength", it) }
@@ -124,8 +135,13 @@ private fun Dashboard(
             }
         }
 
+        SectionHeader("Today's plan", "Built for your progress")
+        TrainingPlanCard(userId = userId, onEnterGate = onEnterGate, onOpenPlan = onOpenPlan)
+
+        SectionHeader("Recommended Gate")
         GateCard(gate, onEnter = { onEnterGate(recommended?.id) })
 
+        SectionHeader("Momentum")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             StatChip("STREAK", "${p.currentStreakDays} d", modifier = Modifier.weight(1f))
             StatChip("BEST STREAK", "${p.longestStreakDays} d", modifier = Modifier.weight(1f))

@@ -31,19 +31,20 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 AppText("HUNTER RANK", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                    AppText("Rank ${result.rank.name}", variant = TextVariant.TITLE)
+                    AppText("Rank ${result.rank.wire}", variant = TextVariant.TITLE)
                     if (result.provisional) ProvisionalTag()
                 }
                 AppText("Calculated Hunter Score ${result.hunterScore?.roundToInt()?.toString() ?: "—"} / 100", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
-                result.rankCap?.let { AppText("CURRENT RANK CAP  ${it.name}", variant = TextVariant.CAPTION, tone = TextTone.ACCENT, mono = true) }
+                AppText("${result.rp} / 100 RP", variant = TextVariant.LABEL, tone = TextTone.ACCENT, mono = true)
+                result.rankCap?.let { AppText("CURRENT RANK CAP  ${it.wire}", variant = TextVariant.CAPTION, tone = TextTone.ACCENT, mono = true) }
             }
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             AppText("PHYSICAL ATTRIBUTES", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-            PillarRow("Physique", result.physiqueScore, result.physique?.rank)
-            PillarRow("Strength", result.strengthScore, result.strength?.rank)
-            PillarRow("Conditioning", result.conditioningScore, result.conditioning?.rank)
+            PillarRow("Physique", result.physiqueScore, result.physique?.rank, result.physique?.rp)
+            PillarRow("Strength", result.strengthScore, result.strength?.rank, result.strength?.rp)
+            PillarRow("Conditioning", result.conditioningScore, result.conditioning?.rank, result.conditioning?.rp)
         }
 
         result.limitingAttribute?.let { limiting ->
@@ -63,7 +64,7 @@ fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
         val next = result.nextRank
         if (next != null) {
             Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                AppText("NEXT RANK: ${next.rank.name}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                AppText("NEXT RANK: ${next.rank.wire}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                 RequirementRow("Physique", result.physiqueScore, next.physique)
                 RequirementRow("Strength", result.strengthScore, next.strength)
                 RequirementRow("Conditioning", result.conditioningScore, next.conditioning)
@@ -97,13 +98,13 @@ private fun ProvisionalTag() {
 }
 
 @Composable
-private fun PillarRow(label: String, score: Double?, rank: com.fitnessrpg.app.domain.rank.Rank?) {
+private fun PillarRow(label: String, score: Double?, rank: com.fitnessrpg.app.domain.rank.Rank?, rp: Int?) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
         if (score == null) {
             AppText("Not assessed", variant = TextVariant.LABEL, tone = TextTone.TERTIARY)
         } else {
-            AppText("${(rank ?: scoreToRank(score)).name} — ${score.roundToInt()}", variant = TextVariant.LABEL, mono = true)
+            AppText("${(rank ?: scoreToRank(score)).wire} — ${rp ?: 0} RP", variant = TextVariant.LABEL, mono = true)
         }
     }
 }

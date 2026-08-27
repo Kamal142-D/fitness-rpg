@@ -1,33 +1,74 @@
 package com.fitnessrpg.app.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.ui.screens.main.DailyMarchScreen
+import com.fitnessrpg.app.ui.screens.main.HistoryScreen
 import com.fitnessrpg.app.ui.screens.main.HomeTabs
 import com.fitnessrpg.app.ui.screens.main.PlaceholderScreen
+import com.fitnessrpg.app.ui.screens.main.QuestsScreen
 import com.fitnessrpg.app.ui.screens.main.SettingsScreen
+import com.fitnessrpg.app.ui.screens.main.TrainingPlanScreen
 import com.fitnessrpg.app.ui.screens.workout.GateDetailScreen
 import com.fitnessrpg.app.ui.screens.workout.GateBuilderScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutCompleteScreen
 import com.fitnessrpg.app.ui.screens.workout.WorkoutScreen
 import com.fitnessrpg.app.ui.screens.onboarding.AssessmentUpdateScreen
+import com.fitnessrpg.app.ui.theme.MotionTokens
+import com.fitnessrpg.app.ui.theme.motionDuration
 
 /** Navigation for the authed area: tabs + settings + the gate/workout stack. */
 @Composable
 fun MainNavHost(userId: String, onSignOut: () -> Unit) {
     val nav = rememberNavController()
+    val duration = motionDuration(MotionTokens.Standard)
 
-    NavHost(navController = nav, startDestination = "home") {
+    NavHost(
+        navController = nav,
+        startDestination = "home",
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(duration)) + fadeIn(tween(duration))
+        },
+        exitTransition = { fadeOut(tween(duration / 2)) },
+        popEnterTransition = { fadeIn(tween(duration)) },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(duration)) + fadeOut(tween(duration))
+        },
+    ) {
         composable("home") {
             HomeTabs(
                 userId = userId,
                 onOpenGate = { id -> if (id != null) nav.navigate("gate/$id") },
                 onOpenGates = { nav.navigate("gate_new") },
+                onWorkoutStarted = {
+                    nav.navigate("workout") { popUpTo("home") }
+                },
                 onSettings = { nav.navigate("settings") },
                 onAssessment = { nav.navigate("assessment") },
+                onOpenQuests = { nav.navigate("quests") },
+                onOpenDailyMarch = { nav.navigate("march") },
+                onOpenHistory = { nav.navigate("history") },
+                onOpenPlan = { nav.navigate("plan") },
             )
+        }
+        composable("plan") {
+            TrainingPlanScreen(userId = userId, onBack = { nav.popBackStack() })
+        }
+        composable("quests") {
+            QuestsScreen(onBack = { nav.popBackStack() })
+        }
+        composable("march") {
+            DailyMarchScreen(userId = userId, onBack = { nav.popBackStack() })
+        }
+        composable("history") {
+            HistoryScreen(userId = userId, onBack = { nav.popBackStack() })
         }
         composable("settings") {
             SettingsScreen(

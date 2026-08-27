@@ -26,12 +26,15 @@ class RankTest {
 
     @Test
     fun `scoreToRank maps the documented band midpoints`() {
-        assertEquals(Rank.E, scoreToRank(10.0))
-        assertEquals(Rank.D, scoreToRank(27.0))
-        assertEquals(Rank.C, scoreToRank(42.0))
-        assertEquals(Rank.B, scoreToRank(57.0))
-        assertEquals(Rank.A, scoreToRank(72.0))
+        assertEquals(Rank.E, scoreToRank(5.0))
+        assertEquals(Rank.D, scoreToRank(17.0))
+        assertEquals(Rank.C, scoreToRank(37.0))
+        assertEquals(Rank.B, scoreToRank(60.0))
+        assertEquals(Rank.A, scoreToRank(77.0))
         assertEquals(Rank.S, scoreToRank(90.0))
+        assertEquals(Rank.S_PLUS, scoreToRank(95.0))
+        assertEquals(Rank.SS, scoreToRank(98.0))
+        assertEquals(Rank.SSS, scoreToRank(99.5))
     }
 
     @Test
@@ -45,7 +48,7 @@ class RankTest {
     @Test
     fun `scoreToRank clamps out-of-range scores to the end ranks`() {
         assertEquals(Rank.E, scoreToRank(-50.0))
-        assertEquals(Rank.S, scoreToRank(150.0))
+        assertEquals(Rank.SSS, scoreToRank(150.0))
     }
 
     @Test
@@ -68,5 +71,22 @@ class RankTest {
     @Test
     fun `rank thresholds are weakest-to-strongest matching Rank order`() {
         assertEquals(Rank.entries.toList(), RANK_THRESHOLDS.map { it.rank })
+    }
+
+    @Test
+    fun `RP is the position inside the current rank band`() {
+        assertEquals(0, scoreToRp(25.0))
+        assertEquals(48, scoreToRp(37.0))
+        assertEquals(100, scoreToRp(100.0))
+    }
+
+    @Test
+    fun `crossing a boundary creates a rank-up event`() {
+        val previous = rankedResult(24.9, RankConfidence.HIGH, provisional = false)
+        val current = rankedResult(25.0, RankConfidence.HIGH, provisional = false, previous = previous)
+        assertEquals(Rank.D, previous.rank)
+        assertEquals(Rank.C, current.rank)
+        assertTrue(current.rankChanged)
+        assertEquals(0, current.rp)
     }
 }

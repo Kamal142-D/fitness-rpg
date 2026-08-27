@@ -7,7 +7,7 @@ import com.fitnessrpg.app.domain.rank.Rank
  * which ALL requirements (overall score AND every assessed pillar) are satisfied.
  * These are the initial, tunable thresholds.
  */
-val HUNTER_RANK_REQUIREMENTS: Map<Rank, RankRequirement> = RankingV2Config.hunterRequirements
+val HUNTER_RANK_REQUIREMENTS: Map<Rank, RankRequirement> = RankingV3Config.hunterRequirements
 
 /** The highest rank reachable while the assessment is provisional (incomplete). */
 val PROVISIONAL_MAX_RANK: Rank = Rank.C

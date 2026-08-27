@@ -3,9 +3,9 @@ package com.fitnessrpg.app.domain.rankings
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.ranking.Anchor
 
-/** Single configurable source for Ranking System V2 constants. */
-object RankingV2Config {
-    const val VERSION = 2
+/** Single configurable source for every Ranking System V3 threshold and weight. */
+object RankingV3Config {
+    const val VERSION = 3
     const val BODY_ASSESSMENT_VALID_DAYS = 90L
     const val STRENGTH_VALID_DAYS = 60L
     const val CONDITIONING_VALID_DAYS = 90L
@@ -34,13 +34,16 @@ object RankingV2Config {
     const val CLEAR_PROGRESS_WEIGHT = .25
     const val CLEAR_PR_WEIGHT = .10
 
-    val hunterRequirements = mapOf(
+    val hunterRequirements: Map<Rank, RankRequirement> = linkedMapOf(
         Rank.E to RankRequirement(0, 0, 0, 0),
-        Rank.D to RankRequirement(25, 20, 15, 15),
-        Rank.C to RankRequirement(40, 35, 30, 25),
-        Rank.B to RankRequirement(55, 50, 45, 40),
-        Rank.A to RankRequirement(72, 68, 68, 60),
-        Rank.S to RankRequirement(87, 82, 82, 78),
+        Rank.D to RankRequirement(15, 10, 10, 10),
+        Rank.C to RankRequirement(30, 20, 20, 20),
+        Rank.B to RankRequirement(45, 35, 35, 30),
+        Rank.A to RankRequirement(60, 50, 50, 45),
+        Rank.S to RankRequirement(75, 65, 65, 60),
+        Rank.S_PLUS to RankRequirement(85, 75, 75, 70),
+        Rank.SS to RankRequirement(90, 85, 85, 80),
+        Rank.SSS to RankRequirement(96, 92, 92, 88),
     )
 
     data class PhysiqueRequirement(
@@ -51,13 +54,23 @@ object RankingV2Config {
         val balance: Int? = null,
     )
 
-    val physiqueRequirements = mapOf(
+    val physiqueRequirements: Map<Rank, PhysiqueRequirement> = linkedMapOf(
         Rank.E to PhysiqueRequirement(0, 0, 0, 0),
-        Rank.D to PhysiqueRequirement(20, 15, 10, 10),
-        Rank.C to PhysiqueRequirement(35, 30, 25, 25),
-        Rank.B to PhysiqueRequirement(50, 45, 45, 40),
-        Rank.A to PhysiqueRequirement(70, 65, 65, 60),
-        Rank.S to PhysiqueRequirement(85, 80, 80, 75, 70),
+        Rank.D to PhysiqueRequirement(15, 10, 10, 10),
+        Rank.C to PhysiqueRequirement(30, 20, 20, 20),
+        Rank.B to PhysiqueRequirement(45, 35, 35, 30),
+        Rank.A to PhysiqueRequirement(60, 50, 50, 45),
+        Rank.S to PhysiqueRequirement(75, 65, 65, 60),
+        Rank.S_PLUS to PhysiqueRequirement(85, 75, 75, 70),
+        Rank.SS to PhysiqueRequirement(90, 82, 85, 80),
+        Rank.SSS to PhysiqueRequirement(96, 90, 92, 88, 80),
+    )
+
+    const val PERSONAL_BASELINE_SESSIONS = 3
+    val personalProgressAnchors = listOf(
+        Anchor(.75, 0.0), Anchor(.90, 18.0), Anchor(1.0, 30.0), Anchor(1.05, 45.0),
+        Anchor(1.10, 58.0), Anchor(1.18, 72.0), Anchor(1.28, 85.0),
+        Anchor(1.40, 93.0), Anchor(1.55, 97.0), Anchor(1.75, 99.0),
     )
 
     data class AgeBand(val range: IntRange, val bodyFatAllowance: Double, val strengthScale: Double)

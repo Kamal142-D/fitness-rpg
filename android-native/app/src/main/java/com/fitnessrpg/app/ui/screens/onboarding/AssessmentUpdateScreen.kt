@@ -107,7 +107,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
             }
             snapshot != null -> {
                 AppCard {
-                    AppText("Current ${snapshot.hunter.rank.name}-Rank${if (snapshot.hunter.provisional) " · Provisional" else ""}", variant = TextVariant.TITLE)
+                    AppText("Current ${snapshot.hunter.rank.wire}-Rank${if (snapshot.hunter.provisional) " · Provisional" else ""}", variant = TextVariant.TITLE)
                     snapshot.hunter.reasons.take(3).forEach { AppText(it, variant = TextVariant.CAPTION, tone = TextTone.SECONDARY) }
                 }
 

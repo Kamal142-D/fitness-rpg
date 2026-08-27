@@ -28,10 +28,12 @@ import com.fitnessrpg.app.domain.rankings.computeStrengthRank
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
+@Serializable
 data class RankAssessmentSnapshot(
     val hunter: HunterRankResult,
     val physique: PhysiqueRankResult,
@@ -39,6 +41,14 @@ data class RankAssessmentSnapshot(
     val conditioning: ConditioningRankResult,
     val profile: ProfileBasicsDto?,
     val latestBody: BodyAssessmentDto?,
+    /**
+     * True only when the user genuinely has something to add or refresh: no body
+     * assessment on record (or it has gone stale), or no strength evidence yet.
+     * Deliberately NOT tied to [HunterRankResult.provisional] — a rank stays
+     * provisional while conditioning is skipped, but conditioning is optional, so
+     * a completed body + strength pass must be able to clear the nag banner.
+     */
+    val needsAssessmentUpdate: Boolean = false,
 )
 
 class AssessmentRepository {
@@ -97,7 +107,7 @@ class AssessmentRepository {
             }
         }
         val recentStrengthInputs = strengthInputs.filter { day ->
-            day.performedAtEpochDay?.let { today - it <= com.fitnessrpg.app.domain.rankings.RankingV2Config.STRENGTH_VALID_DAYS } == true
+            day.performedAtEpochDay?.let { today - it <= com.fitnessrpg.app.domain.rankings.RankingV3Config.STRENGTH_VALID_DAYS } == true
         }
         val rankingStrengthInputs = recentStrengthInputs.ifEmpty { strengthInputs }
         val sessions = rankingStrengthInputs.mapNotNull { it.sessionId }.distinct().size
@@ -107,11 +117,18 @@ class AssessmentRepository {
             computeConditioningRank(ConditioningInput(type, it.result, age, profile?.sex, it.assessedAt.toEpochDayOrNull()), today)
         } ?: ConditioningRankResult(null, null, true, AssessmentConfidence.LOW, listOf("A standardized conditioning test has not been completed."))
         val hunter = computeHunterRank(physique, strength, conditioning)
-        return RankAssessmentSnapshot(hunter, physique, strength, conditioning, profile, body)
+        // The nag is about missing/stale data the user can actually supply — a
+        // fresh body assessment plus some strength evidence. Conditioning is
+        // optional and never keeps this flag on by itself.
+        val hasStrengthEvidence = rankingStrengthInputs.isNotEmpty()
+        val bodyFresh = body != null && !physique.stale
+        val needsAssessmentUpdate = !bodyFresh || !hasStrengthEvidence
+        return RankAssessmentSnapshot(hunter, physique, strength, conditioning, profile, body, needsAssessmentUpdate)
     }
 
     suspend fun recalculateAndPersist(userId: String): HunterRankResult {
-        val result = getRankAssessment(userId).hunter
+        val snapshot = getRankAssessment(userId)
+        val result = snapshot.hunter
         db.from("player_progression").update(
             ProgressionInitUpdateDto(
                 strengthScore = result.strengthScore ?: 0.0,
@@ -120,12 +137,16 @@ class AssessmentRepository {
                 conditioningScore = result.conditioningScore,
                 disciplineScore = 0.0,
                 hunterScore = result.hunterScore ?: 0.0,
-                hunterRank = result.rank.name,
+                hunterRank = result.rank.wire,
+                hunterRp = result.rp,
+                physiqueRp = result.physique?.rp ?: 0,
+                strengthRp = result.strength?.rp ?: 0,
+                conditioningRp = result.conditioning?.rp ?: 0,
                 hunterRankProvisional = result.provisional,
                 hunterRankConfidence = result.confidence.name.lowercase(),
-                hunterRankCap = result.rankCap?.name,
+                hunterRankCap = result.rankCap?.wire,
                 hunterRankReasons = result.reasons,
-                assessmentUpdateRequired = result.provisional,
+                assessmentUpdateRequired = snapshot.needsAssessmentUpdate,
             ),
         ) { filter { eq("user_id", userId) } }
         return result

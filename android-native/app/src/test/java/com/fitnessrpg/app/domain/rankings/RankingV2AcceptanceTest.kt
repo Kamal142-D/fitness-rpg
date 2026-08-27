@@ -31,7 +31,7 @@ class RankingV2AcceptanceTest {
         val measured = computePhysiqueRank(
             base.copy(segmentalLeanMass = SegmentalLeanMassData(4.2, 4.2, 10.5, 10.5)), 100,
         )
-        assertEquals(Rank.S, measured.rankCap)
+        assertEquals(Rank.SSS, measured.rankCap)
         assertEquals(AssessmentConfidence.HIGH, measured.confidence)
     }
 
@@ -49,7 +49,7 @@ class RankingV2AcceptanceTest {
         val repeated = computeStrengthRank(evidence("one") + evidence("two"), 80.0, "male", todayEpochDay = 100)
         assertTrue(once.rank!!.ordinal <= Rank.B.ordinal)
         assertTrue(repeated.rank!!.ordinal >= Rank.A.ordinal)
-        assertEquals(AssessmentConfidence.HIGH, repeated.confidence)
+        assertEquals(AssessmentConfidence.MEDIUM, repeated.confidence)
     }
 
     @Test fun `all standardized conditioning tests are supported and current evidence is high-confidence`() {

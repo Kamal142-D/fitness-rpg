@@ -20,6 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,6 +57,10 @@ import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
+import com.fitnessrpg.app.ui.components.AppProgressBar
+import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.components.SectionHeader
+import com.fitnessrpg.app.ui.components.StatusPill
 import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Spacing
 import kotlinx.coroutines.delay
@@ -63,6 +70,43 @@ import androidx.compose.material3.Text
 
 private fun Double?.toField(): String =
     this?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
+
+/** Keep only digits and a single decimal separator (normalising ',' to '.'). */
+private fun cleanDecimal(input: String): String {
+    val sb = StringBuilder()
+    var dotSeen = false
+    for (ch in input) {
+        when {
+            ch.isDigit() -> sb.append(ch)
+            (ch == '.' || ch == ',') && !dotSeen -> { dotSeen = true; sb.append('.') }
+        }
+    }
+    return sb.toString()
+}
+
+/**
+ * A decimal input that preserves exactly what the user types (so "7." and "7.5"
+ * are not collapsed back to "7" by round-tripping through a Double). The parsed
+ * value is pushed out via [onValueChange]; the raw text is only re-synced from
+ * [value] on a genuine external change (e.g. a pre-filled set).
+ */
+@Composable
+private fun DecimalField(value: Double?, onValueChange: (Double?) -> Unit, placeholder: String) {
+    var text by remember { mutableStateOf(value.toField()) }
+    LaunchedEffect(value) {
+        if (text.toDoubleOrNull() != value) text = value.toField()
+    }
+    AppTextField(
+        value = text,
+        onValueChange = { raw ->
+            val cleaned = cleanDecimal(raw)
+            text = cleaned
+            onValueChange(cleaned.toDoubleOrNull())
+        },
+        placeholder = placeholder,
+        keyboardType = KeyboardType.Decimal,
+    )
+}
 
 @Composable
 fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) {
@@ -97,23 +141,32 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
     val restRemaining = restRemainingSeconds(w.restEndsAt, now)
 
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                AppText("GATE IN PROGRESS", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                AppText(w.name, variant = TextVariant.TITLE)
-            }
-            AppButton("Cancel", onClick = {
+        ScreenHeader(
+            eyebrow = "Gate in progress",
+            title = w.name,
+            subtitle = "Log each working set as you complete it.",
+            action = { AppButton("Cancel", onClick = {
                 store.clear()
                 onCancel()
-            }, variant = ButtonVariant.GHOST)
-        }
+            }, variant = ButtonVariant.GHOST) },
+        )
 
-        if (restRemaining > 0) {
-            AppCard { AppText("Rest — ${formatClock(restRemaining)}", variant = TextVariant.HEADING, tone = TextTone.ACCENT) }
+        val totalSets = w.exercises.sumOf { it.sets.count { set -> !set.isWarmup } }
+        val completedSets = w.exercises.sumOf { it.sets.count { set -> !set.isWarmup && set.isCompleted } }
+        SectionHeader("Workout progress", "$completedSets / $totalSets sets")
+        AppProgressBar(if (totalSets == 0) 0f else completedSets.toFloat() / totalSets)
+
+        AnimatedVisibility(visible = restRemaining > 0, enter = fadeIn(), exit = fadeOut()) {
+            AppCard {
+                StatusPill("Rest timer")
+                AppText(formatClock(restRemaining), variant = TextVariant.DISPLAY, tone = TextTone.ACCENT, mono = true)
+                AppText("Recover, breathe, and prepare for the next set.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+            }
         }
 
         error?.let { AppText(it, tone = TextTone.DANGER) }
 
+        SectionHeader("Exercises", "${w.exercises.size} movements")
         w.exercises.forEachIndexed { exIdx, ex ->
             ExerciseCard(ex, exIdx, store, onReplace = { pickerIndex = exIdx })
         }
@@ -161,9 +214,12 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
 @Composable
 private fun ExerciseCard(ex: ActiveExercise, exIdx: Int, store: com.fitnessrpg.app.data.local.ActiveWorkoutStore, onReplace: () -> Unit) {
     AppCard {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            AppText(ex.name, variant = TextVariant.HEADING, modifier = Modifier.weight(1f))
-            AppText(formatTargets(ex.targetSets, ex.targetRepsMin, ex.targetRepsMax), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                AppText(ex.name, variant = TextVariant.HEADING)
+                AppText(formatTargets(ex.targetSets, ex.targetRepsMin, ex.targetRepsMax), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
+            }
+            if (ex.sets.any { it.isCompleted }) StatusPill("Logging", color = Palette.Success)
             AppButton("Replace", onClick = onReplace, variant = ButtonVariant.GHOST)
         }
         Column(modifier = Modifier.fillMaxWidth().padding(top = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -204,38 +260,41 @@ private fun ExercisePickerDialog(catalog: List<Exercise>, onDismiss: () -> Unit,
 
 @Composable
 private fun SetRow(set: ActiveSet, exIdx: Int, setIdx: Int, store: com.fitnessrpg.app.data.local.ActiveWorkoutStore) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-        AppText("${set.setNumber}", variant = TextVariant.LABEL, tone = if (set.isWarmup) TextTone.TERTIARY else TextTone.SECONDARY, modifier = Modifier.width(20.dp))
-        Box(Modifier.weight(1f)) {
-            AppTextField(
-                value = set.weightKg.toField(),
-                onValueChange = { store.update { s -> setWeight(s, exIdx, setIdx, it.toDoubleOrNull()) } },
-                placeholder = "kg",
-                keyboardType = KeyboardType.Decimal,
-            )
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            AppText("SET ${set.setNumber}", variant = TextVariant.CAPTION, tone = if (set.isWarmup) TextTone.TERTIARY else TextTone.SECONDARY, mono = true)
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                AppButton(
+                    if (set.isWarmup) "Warm-up" else "Working",
+                    onClick = { store.update { toggleWarmup(it, exIdx, setIdx) } },
+                    variant = ButtonVariant.GHOST,
+                )
+                AppButton(
+                    if (set.isCompleted) "Undo" else "Complete",
+                    onClick = { store.update { if (set.isCompleted) uncompleteSet(it, exIdx, setIdx) else completeSet(it, exIdx, setIdx) } },
+                    variant = if (set.isCompleted) ButtonVariant.SECONDARY else ButtonVariant.PRIMARY,
+                )
+            }
         }
-        Box(Modifier.weight(1f)) {
-            AppTextField(
-                value = set.reps?.toString() ?: "",
-                onValueChange = { store.update { s -> setReps(s, exIdx, setIdx, it.toIntOrNull()) } },
-                placeholder = "reps",
-                keyboardType = KeyboardType.Number,
-            )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                AppText("WEIGHT (KG)", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
+                DecimalField(
+                    value = set.weightKg,
+                    onValueChange = { store.update { s -> setWeight(s, exIdx, setIdx, it) } },
+                    placeholder = "0",
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                AppText("REPS", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
+                AppTextField(
+                    value = set.reps?.toString() ?: "",
+                    onValueChange = { store.update { s -> setReps(s, exIdx, setIdx, it.toIntOrNull()) } },
+                    placeholder = "0",
+                    keyboardType = KeyboardType.Number,
+                )
+            }
         }
-        AppButton(
-            if (set.isWarmup) "W" else "•",
-            onClick = { store.update { toggleWarmup(it, exIdx, setIdx) } },
-            variant = ButtonVariant.GHOST,
-        )
-        AppButton(
-            if (set.isCompleted) "Undo" else "Done",
-            onClick = {
-                store.update { if (set.isCompleted) uncompleteSet(it, exIdx, setIdx) else completeSet(it, exIdx, setIdx) }
-            },
-            variant = if (set.isCompleted) ButtonVariant.SECONDARY else ButtonVariant.PRIMARY,
-        )
-    }
-    if (set.isCompleted) {
-        AppText("logged", variant = TextVariant.CAPTION, tone = TextTone.SUCCESS, modifier = Modifier.padding(start = 24.dp))
+        if (set.isCompleted) AppText("Logged · rest timer started", variant = TextVariant.CAPTION, tone = TextTone.SUCCESS)
     }
 }

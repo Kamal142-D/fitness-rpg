@@ -1,5 +1,7 @@
 package com.fitnessrpg.app.domain.model
 
+import kotlinx.serialization.Serializable
+
 /** Exercise catalog entry (mirrors the `exercises` table). */
 data class Exercise(
     val id: String,
@@ -23,6 +25,7 @@ data class Exercise(
 )
 
 /** A Gate template (mirrors `workout_templates`). `difficulty` is raw text. */
+@Serializable
 data class GateTemplate(
     val id: String,
     val userId: String?,

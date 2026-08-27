@@ -72,9 +72,9 @@ fun AppTextField(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .heightIn(min = 52.dp)
                 .clip(shape)
-                .background(Palette.Surface2)
+                .background(if (focused) Palette.Surface3 else Palette.Surface2)
                 .border(BorderStroke(1.dp, borderColor), shape)
                 .padding(horizontal = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,

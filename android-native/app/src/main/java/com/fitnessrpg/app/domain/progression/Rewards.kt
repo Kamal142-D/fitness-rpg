@@ -10,7 +10,15 @@ object XpRewards {
 
     /** Gate clear bonus by clear rank (within the documented 100-300 band). */
     val GATE_CLEAR_BONUS: Map<Rank, Int> = mapOf(
-        Rank.E to 100, Rank.D to 100, Rank.C to 150, Rank.B to 200, Rank.A to 250, Rank.S to 300,
+        Rank.E to 100,
+        Rank.D to 100,
+        Rank.C to 150,
+        Rank.B to 200,
+        Rank.A to 250,
+        Rank.S to 300,
+        Rank.S_PLUS to 350,
+        Rank.SS to 400,
+        Rank.SSS to 500,
     )
 }
 

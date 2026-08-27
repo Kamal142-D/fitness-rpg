@@ -16,20 +16,19 @@ import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
+import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.components.SectionHeader
 import com.fitnessrpg.app.ui.theme.Spacing
 
 @Composable
 fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
     val context = LocalContext.current
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                AppText("ACCOUNT", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                AppText("Settings", variant = TextVariant.DISPLAY)
-            }
+        ScreenHeader("Account", "Settings", subtitle = "App, privacy, and account controls.", action = {
             AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
-        }
+        })
 
+        SectionHeader("Account")
         AppCard {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 AppText("SIGNED IN AS", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -37,8 +36,10 @@ fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
             }
         }
 
+        SectionHeader("App updates")
         UpdateSection(modifier = Modifier.fillMaxWidth())
 
+        SectionHeader("Health & privacy")
         AppCard {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 AppText("HEALTH & ACTIVITY DATA", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -52,6 +53,7 @@ fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
             }
         }
 
+        SectionHeader("Data sources")
         AppCard {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 AppText("EXERCISE DATA & ATTRIBUTION", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -60,6 +62,7 @@ fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
             }
         }
 
+        SectionHeader("Session")
         AppButton("Sign out", onClick = onSignOut, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
     }
 }

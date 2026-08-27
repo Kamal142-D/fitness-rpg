@@ -135,6 +135,10 @@ data class ProgressionDto(
     @SerialName("discipline_score") val disciplineScore: Double = 0.0,
     @SerialName("hunter_score") val hunterScore: Double = 60.0,
     @SerialName("hunter_rank") val hunterRank: String? = null,
+    @SerialName("hunter_rp") val hunterRp: Int = 0,
+    @SerialName("physique_rp") val physiqueRp: Int = 0,
+    @SerialName("strength_rp") val strengthRp: Int = 0,
+    @SerialName("conditioning_rp") val conditioningRp: Int = 0,
     @SerialName("current_streak_days") val currentStreakDays: Int = 0,
     @SerialName("longest_streak_days") val longestStreakDays: Int = 0,
     @SerialName("hunter_rank_provisional") val hunterRankProvisional: Boolean = true,
@@ -148,6 +152,7 @@ data class ProgressionDto(
         strengthScore = strengthScore, physiqueScore = physiqueScore,
         enduranceScore = enduranceScore, conditioningScore = conditioningScore, disciplineScore = disciplineScore,
         hunterScore = hunterScore, hunterRank = rankOrDefault(hunterRank),
+        hunterRp = hunterRp, physiqueRp = physiqueRp, strengthRp = strengthRp, conditioningRp = conditioningRp,
         currentStreakDays = currentStreakDays, longestStreakDays = longestStreakDays,
         hunterRankProvisional = hunterRankProvisional,
         hunterRankConfidence = hunterRankConfidence,
@@ -174,11 +179,12 @@ data class WorkoutSessionDto(
     val name: String? = null,
     @SerialName("completed_at") val completedAt: String? = null,
     @SerialName("gate_clear_rank") val gateClearRank: String? = null,
+    @SerialName("gate_difficulty_rank") val gateDifficultyRank: String? = null,
     @SerialName("total_volume_kg") val totalVolumeKg: Double? = null,
     @SerialName("duration_seconds") val durationSeconds: Int? = null,
     val status: String? = null,
 ) {
-    fun toSummary() = SessionSummary(id, name, completedAt, gateClearRank, totalVolumeKg, durationSeconds)
+    fun toSummary() = SessionSummary(id, name, completedAt, gateClearRank, totalVolumeKg, durationSeconds, gateDifficultyRank)
 }
 
 @Serializable

@@ -38,6 +38,12 @@ data class CompletionExerciseDto(
     val sets: List<CompletionSetDto>,
     @SerialName("difficulty_score") val difficultyScore: Double?,
     @SerialName("difficulty_rank") val difficultyRank: String?,
+    @SerialName("ranking_mode") val rankingMode: String?,
+    @SerialName("exercise_rank_at_time") val exerciseRankAtTime: String?,
+    @SerialName("exercise_rp") val exerciseRp: Int?,
+    @SerialName("exercise_rp_delta") val exerciseRpDelta: Int?,
+    @SerialName("baseline_session_count") val baselineSessionCount: Int?,
+    @SerialName("today_performance") val todayPerformance: String?,
 )
 
 @Serializable
@@ -76,6 +82,7 @@ private fun CompletionSetPayload.toDto() = CompletionSetDto(
 
 private fun CompletionExercisePayload.toDto() = CompletionExerciseDto(
     exerciseId, orderIndex, notes, exerciseScore, performanceGrade, sets.map { it.toDto() }, difficultyScore, difficultyRank,
+    rankingMode, exerciseRankAtTime, exerciseRp, exerciseRpDelta, baselineSessionCount, todayPerformance,
 )
 
 private fun CompletionSession.toDto() = CompletionSessionDto(
@@ -110,7 +117,7 @@ data class ApplyProgressionParams(
 
 fun ProgressionPersistPayload.toDto() = ProgressionPersistDto(
     level, currentXp, lifetimeXp, strengthScore, physiqueScore, enduranceScore, disciplineScore,
-    hunterScore, hunterRank.name, currentStreakDays, longestStreakDays,
+    hunterScore, hunterRank.wire, currentStreakDays, longestStreakDays,
 )
 
 // ---- apply_workout_results ----

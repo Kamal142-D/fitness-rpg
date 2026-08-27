@@ -2,6 +2,7 @@ package com.fitnessrpg.app.domain.rankings
 
 import com.fitnessrpg.app.domain.rank.clampScore
 import com.fitnessrpg.app.domain.rank.scoreToRank
+import com.fitnessrpg.app.domain.rank.scoreToRp
 import com.fitnessrpg.app.domain.ranking.Anchor
 import com.fitnessrpg.app.domain.ranking.interpolate
 
@@ -55,7 +56,7 @@ fun computeConditioningRank(input: ConditioningInput?, todayEpochDay: Long? = nu
         ConditioningTestType.STEP_3_MINUTE -> interpolate(recoveryHeartRateReference, normalized)
     }
     val score = clampScore(raw)
-    val stale = todayEpochDay != null && (input.assessedAtEpochDay == null || todayEpochDay - input.assessedAtEpochDay > RankingV2Config.CONDITIONING_VALID_DAYS)
+    val stale = todayEpochDay != null && (input.assessedAtEpochDay == null || todayEpochDay - input.assessedAtEpochDay > RankingV3Config.CONDITIONING_VALID_DAYS)
     val confidence = when {
         stale -> AssessmentConfidence.LOW
         input.assessedAtEpochDay != null -> AssessmentConfidence.HIGH
@@ -67,6 +68,7 @@ fun computeConditioningRank(input: ConditioningInput?, todayEpochDay: Long? = nu
         provisional = stale,
         confidence = confidence,
         reasons = if (stale) listOf("Conditioning assessment update recommended.") else emptyList(),
+        rp = scoreToRp(score),
     )
 }
 

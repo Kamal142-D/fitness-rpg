@@ -25,20 +25,20 @@ class GateResultTest {
     private val aggregates = CompletionAggregates("Push", "C", 0, 1000.0, 2, 2, 1)
 
     @Test
-    fun `computes gate score, clear rank, grades and XP with no history`() {
+    fun `first gate is baseline and cannot receive an elite clear grade`() {
         val r = computeGateResult(payload(), emptyMap(), aggregates, emptyList())
         assertEquals(100.0, r.completionScore, 1e-9)
-        // V2: target 30%, completion 35%, progress 25%, PR 10% (missing progress renormalized).
-        assertEquals(77.33, r.gateScore, 0.05)
-        assertEquals(Rank.A, r.gateClearRank)
-        assertEquals(Rank.B, r.perExercise[0].performanceGrade) // neutral 60 -> B
-        // 300 base + 2*10 sets + 0 PRs + 250 (A bonus) = 570
-        assertEquals(570, r.xpEarned)
+        assertTrue(r.gateClearRank.ordinal <= Rank.B.ordinal)
+        assertEquals(com.fitnessrpg.app.domain.rankings.ExerciseRankingMode.UNRANKED, r.perExercise[0].rankingMode)
+        assertEquals("Baseline", r.perExercise[0].todayLabel)
+        assertEquals(null, r.perExercise[0].performanceGrade)
+        assertTrue(r.clearProvisional)
     }
 
     @Test
     fun `rewards meaningful PRs in the XP total`() {
         val r = computeGateResult(payload(), emptyMap(), aggregates, listOf(RecordType.ESTIMATED_1RM))
-        assertTrue(r.xpEarned > 570)
+        val noPr = computeGateResult(payload(), emptyMap(), aggregates, emptyList())
+        assertTrue(r.xpEarned > noPr.xpEarned)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -29,14 +30,15 @@ fun AppCard(
     padding: Dp = Spacing.lg,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val bg = if (tone == CardTone.RAISED) Palette.Surface1 else Palette.Background
+    val bg = if (tone == CardTone.RAISED) Palette.Surface1 else Palette.Surface2
     val shape = RoundedCornerShape(Radius.lg)
     Column(
         modifier = modifier
             .clip(shape)
             .background(bg)
-            .border(BorderStroke(1.dp, Palette.Hairline), shape)
+            .border(BorderStroke(1.dp, if (tone == CardTone.RAISED) Palette.HairlineStrong else Palette.Hairline), shape)
             .padding(padding),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
         content = content,
     )
 }

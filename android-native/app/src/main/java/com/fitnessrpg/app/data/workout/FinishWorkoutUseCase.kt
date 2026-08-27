@@ -59,12 +59,16 @@ class FinishWorkoutUseCase {
         val gateBaselines = runCatching {
             ServiceLocator.workoutRepository.getExerciseGateBaselines(exerciseIds)
         }.getOrDefault(emptyMap())
+        val exerciseHistory = runCatching {
+            ServiceLocator.workoutRepository.getExercisePerformanceHistory(exerciseIds)
+        }.getOrDefault(emptyMap())
         val priorTemplateVolume = runCatching {
             ServiceLocator.workoutRepository.getPriorTemplateVolume(payload.session.templateId)
         }.getOrNull()
 
         val exerciseMetadata = runCatching { ServiceLocator.gateRepository.getExercises(exerciseIds) }.getOrDefault(emptyMap())
-        val bodyWeightKg = runCatching { ServiceLocator.profileRepository.getProfile(userId)?.currentWeightKg }.getOrNull()
+        val profile = runCatching { ServiceLocator.profileRepository.getProfile(userId) }.getOrNull()
+        val bodyWeightKg = profile?.currentWeightKg
         val difficulty = calculateGateDifficulty(payload.exercises.map { ex ->
             val meta = exerciseMetadata[ex.exerciseId]
             val recent = gateBaselines[ex.exerciseId]
@@ -88,11 +92,23 @@ class FinishWorkoutUseCase {
             )
         }
         val detection = detectPRs(detectExercises, priorStats)
-        val gate = computeGateResult(payload, priorStats, aggregates, detection.prs.map { it.recordType }, difficulty, priorTemplateVolume)
+        val gate = computeGateResult(
+            payload = payload,
+            priorStats = priorStats,
+            aggregates = aggregates,
+            prRecordTypes = detection.prs.map { it.recordType },
+            difficulty = difficulty,
+            priorSessionVolumeKg = priorTemplateVolume,
+            exerciseMetadata = exerciseMetadata,
+            exerciseHistory = exerciseHistory,
+            bodyweightKg = bodyWeightKg,
+            sex = profile?.sex,
+        )
 
         val sessionId = ServiceLocator.workoutRepository.completeWorkout(augment(payload, gate))
 
         runCatching { ServiceLocator.prRepository.applyWorkoutResults(sessionId, detection.prs, detection.stats) }
+        runCatching { ServiceLocator.prRepository.updateExerciseRanks(gate.perExercise) }
         runCatching { ServiceLocator.questRepository.recordWorkoutForQuests(sessionId) }
         runCatching {
             val prog = ServiceLocator.progressionRepository.getProgression(userId)
@@ -117,6 +133,9 @@ class FinishWorkoutUseCase {
         // strength engine uses multiple sessions for A/S and ignores lifetime PRs.
         runCatching { ServiceLocator.assessmentRepository.recalculateAndPersist(userId) }
 
+        // Training done → advance the rolling plan to the next slot.
+        ServiceLocator.trainingPlanRepository.advanceOnFinish(userId)
+
         // The workout changed XP, rank, gate difficulty and history — drop the
         // cached screen data so the next open shows fresh values.
         DataCache.invalidatePrefix("system:")
@@ -135,17 +154,23 @@ class FinishWorkoutUseCase {
                 progressScore = gate.progressScore,
                 qualityScore = gate.qualityScore,
                 gateScore = gate.gateScore,
-                gateClearRank = gate.gateClearRank.name,
+                gateClearRank = gate.gateClearRank.wire,
                 xpEarned = gate.xpEarned,
                 gateDifficultyScore = gate.difficulty?.score,
-                gateDifficultyRank = gate.difficulty?.rank?.name,
+                gateDifficultyRank = gate.difficulty?.rank?.wire,
             ),
             exercises = payload.exercises.mapIndexed { i, ex ->
                 ex.copy(
-                    exerciseScore = gate.perExercise.getOrNull(i)?.performanceScore,
-                    performanceGrade = gate.perExercise.getOrNull(i)?.performanceGrade?.name,
+                    exerciseScore = gate.perExercise.getOrNull(i)?.exerciseScore,
+                    performanceGrade = null,
                     difficultyScore = gate.difficulty?.perExercise?.find { it.exerciseId == ex.exerciseId }?.score,
-                    difficultyRank = gate.difficulty?.perExercise?.find { it.exerciseId == ex.exerciseId }?.rank?.name,
+                    difficultyRank = gate.difficulty?.perExercise?.find { it.exerciseId == ex.exerciseId }?.rank?.wire,
+                    rankingMode = gate.perExercise.getOrNull(i)?.rankingMode?.name?.lowercase(),
+                    exerciseRankAtTime = gate.perExercise.getOrNull(i)?.exerciseRank?.wire,
+                    exerciseRp = gate.perExercise.getOrNull(i)?.exerciseRp,
+                    exerciseRpDelta = gate.perExercise.getOrNull(i)?.rpDelta,
+                    baselineSessionCount = gate.perExercise.getOrNull(i)?.baselineSessions,
+                    todayPerformance = gate.perExercise.getOrNull(i)?.todayLabel,
                 )
             },
         )

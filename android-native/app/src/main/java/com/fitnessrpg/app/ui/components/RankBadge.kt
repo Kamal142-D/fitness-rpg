@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitnessrpg.app.domain.rank.Rank
+import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.rankColor
 
@@ -28,7 +29,8 @@ enum class RankBadgeSize { SM, MD, LG }
 @Composable
 fun RankBadge(rank: Rank, modifier: Modifier = Modifier, size: RankBadgeSize = RankBadgeSize.MD) {
     val box = when (size) { RankBadgeSize.SM -> 28.dp; RankBadgeSize.MD -> 40.dp; RankBadgeSize.LG -> 64.dp }
-    val font = when (size) { RankBadgeSize.SM -> 15.sp; RankBadgeSize.MD -> 22.sp; RankBadgeSize.LG -> 36.sp }
+    val baseFont = when (size) { RankBadgeSize.SM -> 15f; RankBadgeSize.MD -> 22f; RankBadgeSize.LG -> 36f }
+    val font = (baseFont * when (rank.wire.length) { 1 -> 1f; 2 -> .82f; else -> .66f }).sp
     val radius = when (size) { RankBadgeSize.SM -> Radius.sm; RankBadgeSize.MD -> Radius.md; RankBadgeSize.LG -> Radius.lg }
     val color = rankColor(rank)
     val shape = RoundedCornerShape(radius)
@@ -41,6 +43,27 @@ fun RankBadge(rank: Rank, modifier: Modifier = Modifier, size: RankBadgeSize = R
             .border(BorderStroke(1.5.dp, color.copy(alpha = 0.65f)), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = rank.name, color = color, fontWeight = FontWeight.ExtraBold, fontSize = font)
+        Text(text = rank.wire, color = color, fontWeight = FontWeight.ExtraBold, fontSize = font)
+    }
+}
+
+/** Placeholder badge for a Gate whose rank isn't known yet (never cleared). */
+@Composable
+fun UnknownRankBadge(modifier: Modifier = Modifier, size: RankBadgeSize = RankBadgeSize.MD) {
+    val box = when (size) { RankBadgeSize.SM -> 28.dp; RankBadgeSize.MD -> 40.dp; RankBadgeSize.LG -> 64.dp }
+    val font = when (size) { RankBadgeSize.SM -> 15f; RankBadgeSize.MD -> 22f; RankBadgeSize.LG -> 36f }.sp
+    val radius = when (size) { RankBadgeSize.SM -> Radius.sm; RankBadgeSize.MD -> Radius.md; RankBadgeSize.LG -> Radius.lg }
+    val color = Palette.TextTertiary
+    val shape = RoundedCornerShape(radius)
+
+    Box(
+        modifier = modifier
+            .size(box)
+            .clip(shape)
+            .background(color.copy(alpha = 0.10f))
+            .border(BorderStroke(1.5.dp, color.copy(alpha = 0.45f)), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = "?", color = color, fontWeight = FontWeight.ExtraBold, fontSize = font)
     }
 }

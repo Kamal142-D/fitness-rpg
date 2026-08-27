@@ -37,6 +37,13 @@ data class CompletionExercisePayload(
     val targetRepsMin: Int? = null,
     val targetRepsMax: Int? = null,
     val targetRpe: Double? = null,
+    /** V3 permanent rank evidence. `performanceGrade` above is legacy-only. */
+    val rankingMode: String? = null,
+    val exerciseRankAtTime: String? = null,
+    val exerciseRp: Int? = null,
+    val exerciseRpDelta: Int? = null,
+    val baselineSessionCount: Int? = null,
+    val todayPerformance: String? = null,
 )
 
 data class CompletionSession(

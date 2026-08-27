@@ -1,5 +1,6 @@
 package com.fitnessrpg.app.data.repo
 
+import com.fitnessrpg.app.data.cache.DataCache
 import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.data.dto.BodyAssessmentInsertDto
 import com.fitnessrpg.app.data.dto.ConditioningAssessmentInsertDto
@@ -92,10 +93,14 @@ class ProfileRepository {
                 conditioningScore = hunter.conditioningScore,
                 disciplineScore = 0.0,
                 hunterScore = hunter.hunterScore ?: 0.0,
-                hunterRank = hunter.rank.name,
+                hunterRank = hunter.rank.wire,
+                hunterRp = hunter.rp,
+                physiqueRp = hunter.physique?.rp ?: 0,
+                strengthRp = hunter.strength?.rp ?: 0,
+                conditioningRp = hunter.conditioning?.rp ?: 0,
                 hunterRankProvisional = hunter.provisional,
                 hunterRankConfidence = hunter.confidence.name.lowercase(),
-                hunterRankCap = hunter.rankCap?.name,
+                hunterRankCap = hunter.rankCap?.wire,
                 hunterRankReasons = hunter.reasons,
                 assessmentUpdateRequired = hunter.provisional,
             ),
@@ -146,6 +151,10 @@ class ProfileRepository {
             )
         }
         AssessmentRepository().recalculateAndPersist(userId)
+        // The rank, banner state and player data all just changed — drop the
+        // cached screens so returning to Player/System shows the saved values.
+        DataCache.invalidatePrefix("player:")
+        DataCache.invalidatePrefix("system:")
         OnboardingOutcome.Ok
     } catch (e: Exception) {
         OnboardingOutcome.Error(friendlyDataError(e, "Couldn't save your assessment. Please try again."))

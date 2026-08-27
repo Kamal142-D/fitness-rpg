@@ -17,8 +17,8 @@ enum class TextVariant { DISPLAY, TITLE, HEADING, BODY, LABEL, CAPTION }
 enum class TextTone { PRIMARY, SECONDARY, TERTIARY, ACCENT, SUCCESS, DANGER, INHERIT }
 
 private fun styleFor(variant: TextVariant): TextStyle = when (variant) {
-    TextVariant.DISPLAY -> TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold)
-    TextVariant.TITLE -> TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+    TextVariant.DISPLAY -> TextStyle(fontSize = 36.sp, lineHeight = 41.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+    TextVariant.TITLE -> TextStyle(fontSize = 24.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp)
     TextVariant.HEADING -> TextStyle(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
     TextVariant.BODY -> TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal)
     TextVariant.LABEL -> TextStyle(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)

@@ -14,6 +14,13 @@ import kotlinx.serialization.Serializable
 data class ExerciseGateBaseline(val averageVolumeKg: Double?, val recentBest1rmKg: Double?, val sessionCount: Int)
 
 @Serializable
+private data class ExercisePerformanceEvidenceDto(
+    @SerialName("exercise_id") val exerciseId: String,
+    @SerialName("session_best_1rm_kg") val sessionBest1rmKg: Double,
+    @SerialName("performed_at") val performedAt: String,
+)
+
+@Serializable
 private data class ExerciseGateBaselineDto(
     @SerialName("exercise_id") val exerciseId: String,
     @SerialName("recent_average_volume_kg") val averageVolumeKg: Double? = null,
@@ -56,5 +63,16 @@ class WorkoutRepository {
             order("completed_at", Order.DESCENDING)
             limit(1)
         }.decodeList<PriorSessionVolumeDto>().firstOrNull()?.totalVolumeKg
+    }
+
+    /** Chronological per-session evidence; lifetime PRs are never treated as sessions. */
+    suspend fun getExercisePerformanceHistory(exerciseIds: List<String>): Map<String, List<Double>> {
+        if (exerciseIds.isEmpty()) return emptyMap()
+        return db.from("exercise_performance_history_v3").select {
+            filter { isIn("exercise_id", exerciseIds.distinct()) }
+            order("performed_at", Order.ASCENDING)
+        }.decodeList<ExercisePerformanceEvidenceDto>()
+            .groupBy { it.exerciseId }
+            .mapValues { (_, rows) -> rows.map { it.sessionBest1rmKg } }
     }
 }

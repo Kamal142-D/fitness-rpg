@@ -18,8 +18,8 @@ class RankingV2RegressionTest {
     }
 
     @Test fun `S requires complete recent high confidence evidence`() {
-        assertEquals(Rank.S, computeHunterRank(90.0, 90.0, 86.0, AssessmentConfidence.HIGH).rank)
-        assertNotEquals(Rank.S, computeHunterRank(90.0, 90.0, 86.0, AssessmentConfidence.MEDIUM).rank)
+        assertTrue(computeHunterRank(90.0, 90.0, 86.0, AssessmentConfidence.HIGH).rank.ordinal >= Rank.S.ordinal)
+        assertTrue(computeHunterRank(90.0, 90.0, 86.0, AssessmentConfidence.MEDIUM).rank.ordinal < Rank.S.ordinal)
     }
 
     @Test fun `incomplete strength input has no reliable score`() {

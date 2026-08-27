@@ -1,6 +1,8 @@
 package com.fitnessrpg.app.domain.rankings
 
 import com.fitnessrpg.app.domain.rank.Rank
+import com.fitnessrpg.app.domain.rank.RankConfidence
+import kotlinx.serialization.Serializable
 
 /**
  * Redesigned Hunter ranking domain (PLAN: three physical pillars, weakest-attribute
@@ -9,6 +11,7 @@ import com.fitnessrpg.app.domain.rank.Rank
  */
 
 /** The three physical pillars that determine Hunter Rank. */
+@Serializable
 enum class PhysicalAttribute { PHYSIQUE, STRENGTH, CONDITIONING }
 
 enum class Equipment { BARBELL, DUMBBELL, MACHINE, SMITH_MACHINE, CABLE, BODYWEIGHT, OTHER }
@@ -16,11 +19,12 @@ enum class Equipment { BARBELL, DUMBBELL, MACHINE, SMITH_MACHINE, CABLE, BODYWEI
 /** For dumbbells, whether the entered weight is per hand or the combined total. */
 enum class DumbbellWeightMode { PER_HAND, COMBINED }
 
-/** How much validated physical data backs the assessment. Only HIGH may reach S. */
-enum class AssessmentConfidence { LOW, MEDIUM, HIGH }
+/** Compatibility name; confidence itself is defined once in the rank core. */
+typealias AssessmentConfidence = RankConfidence
 enum class BodyAssessmentSource { INBODY, SMART_SCALE, MANUAL, OTHER }
 enum class ConditioningTestType { COOPER_12_MINUTE, RUN_1_5_MILE, STEP_3_MINUTE }
-enum class MovementPattern { HORIZONTAL_PUSH, KNEE_DOMINANT, HIP_HINGE, VERTICAL_PUSH, VERTICAL_PULL }
+enum class MovementPattern { HORIZONTAL_PUSH, VERTICAL_PUSH, HORIZONTAL_PULL, VERTICAL_PULL, KNEE_DOMINANT, HIP_HINGE }
+enum class ExerciseRankingMode { GLOBAL, PERSONAL, UNRANKED }
 
 data class SegmentalLeanMassData(
     val leftArmKg: Double? = null,
@@ -66,9 +70,12 @@ data class StrengthAssessmentInput(
     val sessionId: String? = null,
 )
 
-data class PhysiqueRankResult(val score: Double?, val rank: Rank?, val bodyCompositionScore: Double?, val muscularityScore: Double?, val waistScore: Double?, val balanceScore: Double?, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence = AssessmentConfidence.LOW, val stale: Boolean = false, val reasons: List<String>)
-data class StrengthRankResult(val score: Double?, val rank: Rank?, val movementScores: Map<String, Double>, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
-data class ConditioningRankResult(val score: Double?, val rank: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>)
+@Serializable
+data class PhysiqueRankResult(val score: Double?, val rank: Rank?, val bodyCompositionScore: Double?, val muscularityScore: Double?, val waistScore: Double?, val balanceScore: Double?, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence = AssessmentConfidence.LOW, val stale: Boolean = false, val reasons: List<String>, val rp: Int = 0)
+@Serializable
+data class StrengthRankResult(val score: Double?, val rank: Rank?, val movementScores: Map<String, Double>, val rankCap: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>, val rp: Int = 0)
+@Serializable
+data class ConditioningRankResult(val score: Double?, val rank: Rank?, val provisional: Boolean, val confidence: AssessmentConfidence, val reasons: List<String>, val rp: Int = 0)
 
 /** Minimum thresholds a rank requires across the score + each pillar. */
 data class RankRequirement(
@@ -79,6 +86,7 @@ data class RankRequirement(
 )
 
 /** The requirements the NEXT rank up needs, for the "what to improve" UI. */
+@Serializable
 data class NextRankInfo(
     val rank: Rank,
     val physique: Int,
@@ -88,6 +96,7 @@ data class NextRankInfo(
 )
 
 /** The full result of a Hunter-rank computation, with explainability. */
+@Serializable
 data class HunterRankResult(
     val rank: Rank,
     val hunterScore: Double?,
@@ -103,4 +112,5 @@ data class HunterRankResult(
     val physique: PhysiqueRankResult? = null,
     val strength: StrengthRankResult? = null,
     val conditioning: ConditioningRankResult? = null,
+    val rp: Int = 0,
 )

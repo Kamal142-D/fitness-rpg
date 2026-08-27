@@ -1,5 +1,6 @@
 package com.fitnessrpg.app.data.repo
 
+import com.fitnessrpg.app.data.cache.DataCache
 import com.fitnessrpg.app.data.dto.ExerciseDto
 import com.fitnessrpg.app.data.dto.IdDto
 import com.fitnessrpg.app.data.dto.TemplateExerciseDto
@@ -131,6 +132,7 @@ class GateRepository {
 
     suspend fun archiveGate(templateId: String) {
         db.postgrest.rpc("archive_workout_template", ArchiveTemplateParams(templateId).toJsonObject())
+        DataCache.invalidatePrefix("gates:")
     }
 
     suspend fun updateGate(templateId: String, input: CreateGateInput) {
@@ -147,6 +149,7 @@ class GateRepository {
 
     suspend fun hideSystemGate(userId: String, templateId: String) {
         db.from("hidden_system_templates").upsert(HiddenTemplateInsertDto(userId, templateId))
+        DataCache.invalidatePrefix("gates:")
     }
 
     suspend fun duplicateGate(userId: String, templateId: String): String {

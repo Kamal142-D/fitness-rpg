@@ -9,24 +9,9 @@ import com.fitnessrpg.app.domain.rank.scoreToRank
  * post-training measure of session quality (never confused with Gate Difficulty,
  * which is chosen before). Every component and the result are clamped 0..100.
  *
- * Missing factors are renormalized out rather than scored as zero, so new users
- * are not punished for absent comparison data.
+ * V3 never fills missing baseline or PR evidence with neutral points. That
+ * missing evidence instead keeps the clear grade conservative/provisional.
  */
-data class WeightedComponent(val value: Double?, val weight: Double)
-
-/** Weighted average over the non-null components, renormalizing their weights. */
-fun weightedRenormalized(components: List<WeightedComponent>): Double {
-    var sumW = 0.0
-    var sum = 0.0
-    for (c in components) {
-        val value = c.value ?: continue
-        sumW += c.weight
-        sum += clampScore(value) * c.weight
-    }
-    if (sumW == 0.0) return NEUTRAL_SCORE
-    return clampScore(sum / sumW)
-}
-
 data class GateScoreInput(
     /** Avg performance grade score across exercises (0..100). */
     val performance: Double?,
@@ -40,17 +25,30 @@ data class GateScoreInput(
     val quality: Double?,
 )
 
-fun computeGateScore(input: GateScoreInput): Double = weightedRenormalized(
-    listOf(
-        WeightedComponent(input.performance, GateWeights.PERFORMANCE),
-        WeightedComponent(input.completion, GateWeights.COMPLETION),
-        WeightedComponent(input.progress, GateWeights.PROGRESS),
-        WeightedComponent(input.pr, GateWeights.PR),
-        WeightedComponent(input.quality, GateWeights.QUALITY),
-    ),
+fun computeGateScore(input: GateScoreInput): Double = clampScore(
+    clampScore(input.performance ?: 0.0) * GateWeights.PERFORMANCE +
+        clampScore(input.completion ?: 0.0) * GateWeights.COMPLETION +
+        clampScore(input.progress ?: 0.0) * GateWeights.PROGRESS +
+        clampScore(input.pr ?: 0.0) * GateWeights.PR,
 )
 
-fun gateClearRank(score: Double): Rank = scoreToRank(score)
+fun validatedGateClearRank(
+    score: Double,
+    hasReliableBaseline: Boolean,
+    meaningfulPrCount: Int,
+    completion: Double,
+    targetPerformance: Double,
+    progress: Double?,
+): Rank {
+    var rank = scoreToRank(score)
+    fun cap(max: Rank) { if (rank.ordinal > max.ordinal) rank = max }
+    if (!hasReliableBaseline) cap(Rank.B)
+    if (rank.ordinal >= Rank.S.ordinal && meaningfulPrCount == 0) cap(Rank.A)
+    if (rank.ordinal >= Rank.S_PLUS.ordinal && meaningfulPrCount < 2) cap(Rank.S)
+    if (rank.ordinal >= Rank.SS.ordinal && (meaningfulPrCount < 2 || (progress ?: 0.0) < 90.0)) cap(Rank.S_PLUS)
+    if (rank == Rank.SSS && (meaningfulPrCount < 3 || completion < 95.0 || targetPerformance < 95.0 || (progress ?: 0.0) < 97.0)) cap(Rank.SS)
+    return rank
+}
 
 /** Completion as a percentage of planned working sets. */
 fun completionScore(completedWorkingSets: Int, plannedSets: Int): Double {
@@ -64,11 +62,11 @@ fun progressScore(currentVolumeKg: Double, priorVolumeKg: Double?): Double? {
     return ratioToScore(currentVolumeKg / priorVolumeKg)
 }
 
-/** PR bonus: absent PRs are neutral (bonus, not a penalty). */
+/** PR bonus is a real bonus. No PR means zero bonus, never a free 50 points. */
 fun prComponentScore(prCount: Int): Double = when {
-    prCount <= 0 -> 50.0
-    prCount == 1 -> 72.0
-    prCount == 2 -> 86.0
+    prCount <= 0 -> 0.0
+    prCount == 1 -> 60.0
+    prCount == 2 -> 82.0
     else -> 100.0
 }
 

@@ -3,6 +3,7 @@ package com.fitnessrpg.app.domain.gates
 import com.fitnessrpg.app.domain.model.GateTemplate
 import com.fitnessrpg.app.domain.model.TemplateExercise
 import com.fitnessrpg.app.domain.rank.Rank
+import com.fitnessrpg.app.domain.rank.rankOrNull
 
 /** Pure display mappers for Gates. No I/O — easy to unit test. */
 
@@ -14,7 +15,7 @@ fun intensityForDifficulty(difficulty: Rank): String = when (difficulty) {
     Rank.E, Rank.D -> "Light"
     Rank.C -> "Moderate"
     Rank.B -> "Hard"
-    Rank.A, Rank.S -> "Brutal"
+    Rank.A, Rank.S, Rank.S_PLUS, Rank.SS, Rank.SSS -> "Brutal"
 }
 
 /** Coerce a possibly-null template difficulty string to a valid Rank. */
@@ -25,6 +26,9 @@ fun templateDifficulty(difficulty: String?): Rank = when (difficulty) {
     "B" -> Rank.B
     "A" -> Rank.A
     "S" -> Rank.S
+    "S+", "S_PLUS" -> Rank.S_PLUS
+    "SS" -> Rank.SS
+    "SSS" -> Rank.SSS
     else -> DEFAULT_DIFFICULTY
 }
 
@@ -38,7 +42,7 @@ fun muscleGroupsFor(description: String?): List<String> {
 
 /** Map a template to the SuggestedGate shape used by the dashboard GateCard. */
 fun templateToSuggestedGate(t: GateTemplate): SuggestedGate {
-    val difficulty = t.lastDifficultyRank?.let { runCatching { Rank.valueOf(it) }.getOrNull() }
+    val difficulty = rankOrNull(t.lastDifficultyRank)
     return SuggestedGate(
         name = t.name,
         difficulty = difficulty,

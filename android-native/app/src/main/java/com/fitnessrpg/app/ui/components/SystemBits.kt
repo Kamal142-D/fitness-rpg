@@ -46,7 +46,7 @@ fun AttributeRow(label: String, value: Double, modifier: Modifier = Modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                Text(rank.name, color = rankColor(rank), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                Text(rank.wire, color = rankColor(rank), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                 AppText(v.toString(), variant = TextVariant.LABEL, mono = true)
             }
         }

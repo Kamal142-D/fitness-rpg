@@ -2,6 +2,7 @@ package com.fitnessrpg.app.domain.rankings
 
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.clampScore
+import com.fitnessrpg.app.domain.rank.scoreToRp
 import com.fitnessrpg.app.domain.ranking.Anchor
 import com.fitnessrpg.app.domain.ranking.interpolate
 import kotlin.math.abs
@@ -46,48 +47,48 @@ fun computePhysiqueRank(body: BodyCompositionData, todayEpochDay: Long? = null):
     val female = body.sex == "female"
     val sexKnown = female || body.sex == "male"
     if (!sexKnown) reasons += "Sex-specific body-composition benchmarks are unavailable."
-    val ageBand = RankingV2Config.ageBands.firstOrNull { (body.ageYears ?: 30) in it.range }
-        ?: RankingV2Config.ageBands.first()
+    val ageBand = RankingV3Config.ageBands.firstOrNull { (body.ageYears ?: 30) in it.range }
+        ?: RankingV3Config.ageBands.first()
 
     val validBodyFat = body.bodyFatPercent?.takeIf { it in 3.0..60.0 }
     if (body.bodyFatPercent != null && validBodyFat == null) reasons += "Body-fat percentage is outside the plausible range."
     val composition = if (sexKnown) validBodyFat?.let {
-        clampScore(interpolate(if (female) RankingV2Config.femaleBodyFat else RankingV2Config.maleBodyFat, it - ageBand.bodyFatAllowance))
+        clampScore(interpolate(if (female) RankingV3Config.femaleBodyFat else RankingV3Config.maleBodyFat, it - ageBand.bodyFatAllowance))
     } else null
 
     val explicitLean = body.leanBodyMassKg?.takeIf { it > 0.0 && it <= body.weightKg }
     val derivedLean = validBodyFat?.let { body.weightKg * (1.0 - it / 100.0) }
     val ffmi = (explicitLean ?: derivedLean)?.let { it / (body.heightCm / 100.0).pow(2) }
     val muscularity = if (!sexKnown) null else ffmi?.let {
-        clampScore(interpolate(if (female) RankingV2Config.femaleFfmi else RankingV2Config.maleFfmi, it))
+        clampScore(interpolate(if (female) RankingV3Config.femaleFfmi else RankingV3Config.maleFfmi, it))
     } ?: body.skeletalMuscleMassKg?.takeIf { it > 0.0 && it <= body.weightKg }?.let {
-        clampScore(interpolate(if (female) RankingV2Config.femaleSmmPercent else RankingV2Config.maleSmmPercent, it / body.weightKg * 100.0))
+        clampScore(interpolate(if (female) RankingV3Config.femaleSmmPercent else RankingV3Config.maleSmmPercent, it / body.weightKg * 100.0))
     }
 
     val waist = body.waistCm?.takeIf { it in 40.0..200.0 }?.let {
-        clampScore(interpolate(RankingV2Config.waistToHeight, it / body.heightCm))
+        clampScore(interpolate(RankingV3Config.waistToHeight, it / body.heightCm))
     }
     if (body.waistCm != null && waist == null) reasons += "Waist circumference is outside the plausible range."
     val balance = calculateMuscleBalanceScore(body.segmentalLeanMass)
 
     val components = listOfNotNull(
-        composition?.let { it to RankingV2Config.PHYSIQUE_COMPOSITION_WEIGHT },
-        muscularity?.let { it to RankingV2Config.PHYSIQUE_MUSCULARITY_WEIGHT },
-        waist?.let { it to RankingV2Config.PHYSIQUE_WAIST_WEIGHT },
-        balance?.let { it to RankingV2Config.PHYSIQUE_BALANCE_WEIGHT },
+        composition?.let { it to RankingV3Config.PHYSIQUE_COMPOSITION_WEIGHT },
+        muscularity?.let { it to RankingV3Config.PHYSIQUE_MUSCULARITY_WEIGHT },
+        waist?.let { it to RankingV3Config.PHYSIQUE_WAIST_WEIGHT },
+        balance?.let { it to RankingV3Config.PHYSIQUE_BALANCE_WEIGHT },
     )
     val score = components.takeIf { it.isNotEmpty() }?.let { values ->
         clampScore(values.sumOf { it.first * it.second } / values.sumOf { it.second })
     }
 
-    var cap = Rank.S
+    var cap = Rank.SSS
     if (composition == null) { cap = minOf(cap, Rank.C); reasons += "Reliable body-fat data is missing." }
     if (waist == null) { cap = minOf(cap, Rank.B); reasons += "Waist measurement is missing." }
     if (muscularity == null) { cap = minOf(cap, Rank.C); reasons += "Muscularity could not be calculated from FFMI or explicit SMM." }
-    if (balance == null) { cap = minOf(cap, Rank.A); reasons += "Segmental muscle-balance data is unavailable; S Physique is locked." }
+    if (balance == null) { cap = minOf(cap, Rank.A); reasons += "Segmental muscle-balance data is unavailable; elite Physique ranks are locked." }
     if (body.muscleMassKg != null) reasons += "Generic muscle mass is retained as a separate metric and does not increase Physique Rank."
 
-    val stale = todayEpochDay != null && (body.assessedAtEpochDay == null || todayEpochDay - body.assessedAtEpochDay > RankingV2Config.BODY_ASSESSMENT_VALID_DAYS)
+    val stale = todayEpochDay != null && (body.assessedAtEpochDay == null || todayEpochDay - body.assessedAtEpochDay > RankingV3Config.BODY_ASSESSMENT_VALID_DAYS)
     if (stale) { cap = minOf(cap, Rank.A); reasons += "Body assessment update recommended." }
     val missingCore = composition == null || muscularity == null || waist == null
     val confidence = when {
@@ -96,22 +97,29 @@ fun computePhysiqueRank(body: BodyCompositionData, todayEpochDay: Long? = null):
         else -> AssessmentConfidence.MEDIUM
     }
     val provisional = score == null || missingCore || stale
+    val confidenceCap = when (confidence) {
+        AssessmentConfidence.LOW -> Rank.C
+        AssessmentConfidence.MEDIUM -> Rank.A
+        AssessmentConfidence.HIGH -> Rank.SSS
+    }
+    val effectiveCap = minOf(cap, confidenceCap)
 
     var rank: Rank? = if (score == null) null else Rank.E
     if (score != null) for (candidate in Rank.entries) {
-        val req = RankingV2Config.physiqueRequirements.getValue(candidate)
+        val req = RankingV3Config.physiqueRequirements.getValue(candidate)
         val passesFloors = score >= req.overall &&
             (composition == null || composition >= req.composition) &&
             (muscularity == null || muscularity >= req.muscularity) &&
             (waist == null || waist >= req.waist) &&
             (req.balance == null || (balance ?: -1.0) >= req.balance)
-        if (passesFloors && candidate.ordinal <= cap.ordinal) rank = candidate
+        if (passesFloors && candidate.ordinal <= effectiveCap.ordinal) rank = candidate
     }
 
     return PhysiqueRankResult(
         score = score, rank = rank, bodyCompositionScore = composition, muscularityScore = muscularity,
         waistScore = waist, balanceScore = balance, rankCap = cap, provisional = provisional,
         confidence = confidence, stale = stale, reasons = reasons.distinct(),
+        rp = if (score != null && rank != null && rank == com.fitnessrpg.app.domain.rank.scoreToRank(score)) scoreToRp(score) else if (rank != null) 99 else 0,
     )
 }
 

@@ -15,4 +15,7 @@ fun rankColor(rank: Rank): Color = when (rank) {
     Rank.B -> Palette.Primary // blue
     Rank.A -> Palette.Accent // purple
     Rank.S -> Color(0xFFF5C451) // gold
+    Rank.S_PLUS -> Color(0xFFFFD76A)
+    Rank.SS -> Color(0xFFE9ECFF)
+    Rank.SSS -> Color(0xFFFF7CE8)
 }

@@ -29,21 +29,23 @@ import com.fitnessrpg.app.ui.components.RankBadgeSize
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
+import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.components.SectionHeader
 import com.fitnessrpg.app.ui.theme.Spacing
 
 @Composable
 fun GateDetailScreen(userId: String, templateId: String, onBack: () -> Unit, onEdit: () -> Unit, onStarted: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
+    var actionError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val result by produceState<Result<GateDetail?>?>(null, templateId) {
         value = runCatching { ServiceLocator.gateRepository.getGate(templateId) }
     }
 
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            AppText("GATE", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+        ScreenHeader("Gate file", "Gate Details", subtitle = "Review the routine before you enter.", action = {
             AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
-        }
+        })
 
         val r = result
         when {
@@ -53,20 +55,21 @@ fun GateDetailScreen(userId: String, templateId: String, onBack: () -> Unit, onE
             else -> {
                 val detail = r.getOrThrow()!!
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                    val assessed = detail.template.lastDifficultyRank?.let { runCatching { com.fitnessrpg.app.domain.rank.Rank.valueOf(it) }.getOrNull() }
+                    val assessed = com.fitnessrpg.app.domain.rank.rankOrNull(detail.template.lastDifficultyRank)
                     if (assessed != null) RankBadge(assessed, size = RankBadgeSize.LG)
                     Column {
                         AppText(detail.template.name, variant = TextVariant.DISPLAY)
                         detail.template.description?.let { AppText(it, variant = TextVariant.CAPTION, tone = TextTone.SECONDARY) }
-                        AppText(if (assessed == null) "DIFFICULTY · Not Assessed" else "LAST DIFFICULTY · ${assessed.name}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+                        AppText(if (assessed == null) "DIFFICULTY · Not Assessed" else "LAST DIFFICULTY · ${assessed.wire}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
                     }
                 }
 
+                SectionHeader("Exercises", "${detail.exercises.size} movements")
                 AppCard {
-                    AppText("EXERCISES", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, modifier = Modifier.fillMaxWidth())
                     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                        detail.exercises.forEach { twe ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        detail.exercises.forEachIndexed { index, twe ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                                AppText((index + 1).toString().padStart(2, '0'), variant = TextVariant.CAPTION, tone = TextTone.TERTIARY, mono = true)
                                 AppText(twe.exercise.name, variant = TextVariant.LABEL, modifier = Modifier.weight(1f))
                                 AppText(formatTargets(twe.templateExercise), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
                             }
@@ -84,25 +87,38 @@ fun GateDetailScreen(userId: String, templateId: String, onBack: () -> Unit, onE
                 )
                 if (!detail.template.isSystemTemplate) AppButton("Edit Gate", onClick = onEdit, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
                 AppButton(
-                    if (detail.template.isSystemTemplate) "Hide from My Gates" else "Delete Gate",
+                    "Delete Gate",
                     onClick = { confirmDelete = true },
                     variant = ButtonVariant.GHOST,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (confirmDelete) AlertDialog(
                     onDismissRequest = { confirmDelete = false },
-                    title = { Text(if (detail.template.isSystemTemplate) "Hide Gate?" else "Delete Gate?") },
-                    text = { Text(if (detail.template.isSystemTemplate) "Hide \"${detail.template.name}\" from My Gates?" else "Are you sure you want to delete \"${detail.template.name}\"? Your previous completed workouts will remain in history.") },
-                    confirmButton = { AppButton(if (detail.template.isSystemTemplate) "Hide" else "Delete", onClick = {
+                    title = { Text("Delete Gate?") },
+                    text = { Text("Are you sure you want to delete \"${detail.template.name}\"? Your previous completed workouts will remain in history.") },
+                    confirmButton = { AppButton("Delete", onClick = {
                         confirmDelete = false
                         scope.launch {
-                            if (detail.template.isSystemTemplate) ServiceLocator.gateRepository.hideSystemGate(userId, detail.template.id)
-                            else ServiceLocator.gateRepository.archiveGate(detail.template.id)
-                            onBack()
+                            runCatching {
+                                // System starter Gates are a shared catalog and cannot be
+                                // removed server-side, so deleting one removes it from this
+                                // user's library; custom Gates are soft-deleted.
+                                if (detail.template.isSystemTemplate) ServiceLocator.gateRepository.hideSystemGate(userId, detail.template.id)
+                                else ServiceLocator.gateRepository.archiveGate(detail.template.id)
+                            }.onSuccess { onBack() }
+                                .onFailure { actionError = friendlyDataError(it, "Couldn't delete this Gate.") }
                         }
                     }) },
                     dismissButton = { AppButton("Cancel", onClick = { confirmDelete = false }, variant = ButtonVariant.GHOST) },
                 )
+                actionError?.let { message ->
+                    AlertDialog(
+                        onDismissRequest = { actionError = null },
+                        title = { Text("Action failed") },
+                        text = { Text(message) },
+                        confirmButton = { AppButton("OK", onClick = { actionError = null }) },
+                    )
+                }
             }
         }
     }

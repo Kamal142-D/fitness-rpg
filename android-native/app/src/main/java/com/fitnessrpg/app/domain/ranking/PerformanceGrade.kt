@@ -1,8 +1,6 @@
 package com.fitnessrpg.app.domain.ranking
 
-import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.clampScore
-import com.fitnessrpg.app.domain.rank.scoreToRank
 
 /**
  * Workout Performance Grade (PLAN.txt §6.4): how the user performed TODAY versus
@@ -21,16 +19,26 @@ private val RATIO_ANCHORS: List<Anchor> = listOf(
 )
 
 /**
- * Score today's effort against a recent baseline. Missing baseline (first time)
- * or no valid effort today yields the neutral score — new users aren't punished.
+ * Score today's effort against a recent baseline. Missing baseline is unranked,
+ * represented as zero here; callers must show Baseline x/3 rather than a grade.
  */
 fun performanceScore(todayBest: Double?, baseline: Double?): Double {
-    if (todayBest == null || todayBest <= 0.0) return NEUTRAL_SCORE
-    if (baseline == null || baseline <= 0.0) return NEUTRAL_SCORE
+    if (todayBest == null || todayBest <= 0.0) return 0.0
+    if (baseline == null || baseline <= 0.0) return 0.0
     return clampScore(interpolate(RATIO_ANCHORS, todayBest / baseline))
 }
 
-fun performanceGrade(score: Double): Rank = scoreToRank(score)
+fun todayPerformanceLabel(todayBest: Double?, baseline: Double?, isPr: Boolean = false): String {
+    if (isPr) return "PR"
+    if (todayBest == null || baseline == null || baseline <= 0.0) return "Baseline"
+    val ratio = todayBest / baseline
+    return when {
+        ratio < .90 -> "Below Baseline"
+        ratio < 1.05 -> "Normal"
+        ratio < 1.12 -> "Strong"
+        else -> "Excellent"
+    }
+}
 
 /** Exposed for reuse by progress scoring (same ratio curve). */
 fun ratioToScore(ratio: Double): Double = clampScore(interpolate(RATIO_ANCHORS, ratio))

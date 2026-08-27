@@ -21,25 +21,31 @@ import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppProgressBar
 import com.fitnessrpg.app.ui.components.AppText
+import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
+import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.components.StatusPill
 import com.fitnessrpg.app.ui.theme.Spacing
 import com.fitnessrpg.app.ui.util.rememberCached
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
 
 private fun trim(v: Double): String = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
 
 @Composable
-fun QuestsScreen() {
+fun QuestsScreen(onBack: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
-    val quests = rememberCached("quests") { ServiceLocator.questRepository.listUserQuests() }
+    val quests = rememberCached("quests", ListSerializer(UserQuestView.serializer())) { ServiceLocator.questRepository.listUserQuests() }
 
     ScreenScaffold {
-        Column {
-            AppText("QUESTS", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-            AppText("Quests", variant = TextVariant.DISPLAY)
-        }
+        ScreenHeader(
+            eyebrow = "Daily objectives",
+            title = "Quests",
+            subtitle = "Complete objectives and claim your XP.",
+            action = if (onBack != null) ({ AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST) }) else null,
+        )
 
         val data = quests.data
         when {
@@ -73,7 +79,7 @@ private fun QuestCard(quest: UserQuestView, onClaim: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(top = Spacing.xs), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             AppText("${trim(quest.progress)} / ${trim(quest.requirementValue)}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
             when {
-                quest.claimed -> AppText("CLAIMED", variant = TextVariant.CAPTION, tone = TextTone.SUCCESS)
+                quest.claimed -> StatusPill("Claimed", color = com.fitnessrpg.app.ui.theme.Palette.Success)
                 quest.completed -> AppButton("Claim", onClick = onClaim)
                 else -> AppText("In progress", variant = TextVariant.CAPTION, tone = TextTone.TERTIARY)
             }

@@ -69,6 +69,7 @@ import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.StatChip
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
+import com.fitnessrpg.app.ui.components.ScreenHeader
 import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.Spacing
@@ -88,7 +89,7 @@ private data class MarchLoad(
 )
 
 @Composable
-fun DailyMarchScreen(userId: String) {
+fun DailyMarchScreen(userId: String, onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val repository = ServiceLocator.stepRepository
@@ -151,17 +152,14 @@ fun DailyMarchScreen(userId: String) {
     val fraction = stepGoalFraction(displayedSteps, goal)
 
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                AppText("DAILY MARCH", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-                AppText("Walk. Clear. Advance.", variant = TextVariant.DISPLAY)
-            }
-            SourceBadge(source)
-        }
-
-        AppText(
-            "Every step fills today's March Gate. Reach the target to earn Level XP—Hunter Rank stays assessment-only.",
-            tone = TextTone.SECONDARY,
+        ScreenHeader(
+            eyebrow = "Daily March",
+            title = "Walk. Clear. Advance.",
+            subtitle = "Every step fills today's March Gate.",
+            action = {
+                SourceBadge(source)
+                if (onBack != null) AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
+            },
         )
 
         AppCard(modifier = Modifier.fillMaxWidth(), padding = Spacing.xl) {

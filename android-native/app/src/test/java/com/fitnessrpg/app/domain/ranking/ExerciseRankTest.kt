@@ -36,24 +36,39 @@ class ExerciseRankTest {
     }
 
     @Test
-    fun `requires two qualifying sessions to reach A or S`() {
-        assertEquals(Rank.B, nextExerciseRank(null, 90.0, 1))
-        assertEquals(Rank.S, nextExerciseRank(null, 90.0, 2))
+    fun `personal exercise is unranked until three valid sessions`() {
+        val first = calculatePersonalExerciseTier(50.0, emptyList())
+        val second = calculatePersonalExerciseTier(52.0, listOf(50.0))
+        assertNull(first.rank)
+        assertNull(second.rank)
+        assertEquals(1, first.baselineSessions)
+        assertEquals(2, second.baselineSessions)
     }
 
     @Test
-    fun `caps a single update to plus two rank bands`() {
-        assertEquals(Rank.C, nextExerciseRank(Rank.E, 90.0, 5))
+    fun `third personal session establishes robust baseline and low tier cap`() {
+        val ranked = calculatePersonalExerciseTier(200.0, listOf(50.0, 52.0))
+        assertEquals(Rank.C, ranked.rank)
+        assertEquals(3, ranked.baselineSessions)
+        assertTrue(!ranked.globallyComparable)
     }
 
     @Test
-    fun `never decreases (permanent rank is a high-water mark)`() {
-        assertEquals(Rank.B, nextExerciseRank(Rank.B, 5.0, 5))
+    fun `machine movement uses personal mode rather than a fake global rank`() {
+        val result = calculateExerciseRanking(
+            ExerciseScoreInput("Cable Row", 70.0, 80.0, "male", com.fitnessrpg.app.domain.rankings.Equipment.CABLE),
+            listOf(60.0, 62.0),
+        )
+        assertEquals(com.fitnessrpg.app.domain.rankings.ExerciseRankingMode.PERSONAL, result.mode)
+        assertTrue(!result.globallyComparable)
     }
 
     @Test
-    fun `allows A to S only with two sessions`() {
-        assertEquals(Rank.A, nextExerciseRank(Rank.A, 85.0, 1))
-        assertEquals(Rank.S, nextExerciseRank(Rank.A, 85.0, 2))
+    fun `standardized barbell bench uses global mode`() {
+        val result = calculateExerciseRanking(
+            ExerciseScoreInput("Barbell Bench Press", 80.0, 80.0, "male", com.fitnessrpg.app.domain.rankings.Equipment.BARBELL),
+        )
+        assertEquals(com.fitnessrpg.app.domain.rankings.ExerciseRankingMode.GLOBAL, result.mode)
+        assertTrue(result.globallyComparable)
     }
 }

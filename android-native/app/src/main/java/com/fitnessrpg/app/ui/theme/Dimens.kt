@@ -17,10 +17,10 @@ object Spacing {
 /** Corner radii. */
 object Radius {
     val none = 0.dp
-    val sm = 6.dp
-    val md = 10.dp
-    val lg = 14.dp
-    val xl = 20.dp
+    val sm = 8.dp
+    val md = 12.dp
+    val lg = 18.dp
+    val xl = 24.dp
     val pill = 999.dp
 }
 

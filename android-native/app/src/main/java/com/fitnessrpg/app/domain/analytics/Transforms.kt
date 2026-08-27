@@ -110,7 +110,7 @@ fun computeExerciseRanks(
     val items = mutableListOf<ExerciseRankItem>()
     for (s in stats) {
         val score = exerciseScore(ExerciseScoreInput(s.name, s.best1RMkg, bodyweightKg, sex)) ?: continue
-        items.add(ExerciseRankItem(s.exerciseId, s.name, permanentExerciseRank(score), score, s.best1RMkg))
+        items.add(ExerciseRankItem(s.exerciseId, s.name, permanentExerciseRank(score), com.fitnessrpg.app.domain.rank.scoreToRp(score), score, s.best1RMkg))
     }
     return items.sortedByDescending { it.score }
 }

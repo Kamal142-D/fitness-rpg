@@ -1,71 +1,121 @@
 package com.fitnessrpg.app.domain.ranking
 
 import com.fitnessrpg.app.domain.rank.Rank
-import com.fitnessrpg.app.domain.rank.clampScore
 import com.fitnessrpg.app.domain.rank.scoreToRank
+import com.fitnessrpg.app.domain.rank.scoreToRp
+import com.fitnessrpg.app.domain.rankings.Equipment
+import com.fitnessrpg.app.domain.rankings.DumbbellWeightMode
+import com.fitnessrpg.app.domain.rankings.ExerciseRankingMode
+import com.fitnessrpg.app.domain.rankings.RankingV3Config
 import com.fitnessrpg.app.domain.rankings.scoreStrengthFromEstimated1RM
 
-/**
- * Permanent Exercise Rank (PLAN.txt §6.3) + anti-inflation upgrade guard (§6.6).
- *
- * Pipeline: best valid estimated-1RM -> bodyweight-relative ratio -> provisional
- * reference comparison -> normalized 0..100 score -> Exercise Rank.
- */
 data class ExerciseScoreInput(
     val exerciseName: String,
     val bestEstimated1rmKg: Double?,
     val bodyweightKg: Double?,
     val sex: String?,
+    val equipment: Equipment? = null,
+    val variation: String = "standard",
+    val dumbbellWeightMode: DumbbellWeightMode? = null,
 )
 
-enum class ExerciseRankingKind { BENCHMARK_RANK, PERSONAL_PERFORMANCE_TIER }
-data class ExerciseRankingResult(val kind: ExerciseRankingKind, val score: Double?, val rank: Rank?, val globallyComparable: Boolean)
+data class ExerciseRankingResult(
+    val mode: ExerciseRankingMode,
+    val score: Double?,
+    val rank: Rank?,
+    val rp: Int?,
+    val globallyComparable: Boolean,
+    val baselineSessions: Int,
+    val requiredBaselineSessions: Int = RankingV3Config.PERSONAL_BASELINE_SESSIONS,
+    val todayRpDelta: Int = 0,
+    val rankChanged: Boolean = false,
+    val reasons: List<String> = emptyList(),
+)
 
-fun calculatePersonalExerciseTier(currentEstimated1rmKg: Double?, historyEstimated1rmKg: List<Double>): ExerciseRankingResult {
-    if (currentEstimated1rmKg == null || currentEstimated1rmKg <= 0.0 || historyEstimated1rmKg.isEmpty())
-        return ExerciseRankingResult(ExerciseRankingKind.PERSONAL_PERFORMANCE_TIER, null, null, false)
-    val baseline = historyEstimated1rmKg.filter { it > 0 }.average().takeIf { !it.isNaN() } ?: return ExerciseRankingResult(ExerciseRankingKind.PERSONAL_PERFORMANCE_TIER, null, null, false)
-    val score = ratioToScore(currentEstimated1rmKg / baseline)
-    return ExerciseRankingResult(ExerciseRankingKind.PERSONAL_PERFORMANCE_TIER, score, scoreToRank(score), false)
+private fun median(values: List<Double>): Double? {
+    val sorted = values.filter { it.isFinite() && it > 0.0 }.sorted()
+    if (sorted.isEmpty()) return null
+    val middle = sorted.size / 2
+    return if (sorted.size % 2 == 1) sorted[middle] else (sorted[middle - 1] + sorted[middle]) / 2.0
+}
+
+/** Personal tiers require three valid baseline sessions and repeated validation for high tiers. */
+fun calculatePersonalExerciseTier(
+    currentEstimated1rmKg: Double?,
+    historyEstimated1rmKg: List<Double>,
+    previousScore: Double? = null,
+): ExerciseRankingResult {
+    val validHistory = historyEstimated1rmKg.filter { it.isFinite() && it > 0.0 }
+    if (currentEstimated1rmKg == null || currentEstimated1rmKg <= 0.0) {
+        return ExerciseRankingResult(ExerciseRankingMode.UNRANKED, null, null, null, false, validHistory.size, reasons = listOf("No valid working performance was recorded."))
+    }
+    val evidence = validHistory + currentEstimated1rmKg
+    if (evidence.size < RankingV3Config.PERSONAL_BASELINE_SESSIONS) {
+        return ExerciseRankingResult(ExerciseRankingMode.UNRANKED, null, null, null, false, evidence.size, reasons = listOf("Personal baseline requires three valid sessions."))
+    }
+
+    val baseline = median(evidence.take(RankingV3Config.PERSONAL_BASELINE_SESSIONS))
+        ?: return ExerciseRankingResult(ExerciseRankingMode.UNRANKED, null, null, null, false, evidence.size)
+    val rawScore = interpolate(RankingV3Config.personalProgressAnchors, currentEstimated1rmKg / baseline)
+    val candidate = scoreToRank(rawScore)
+    val validatingSessions = (evidence.size - RankingV3Config.PERSONAL_BASELINE_SESSIONS).coerceAtLeast(0)
+    val cap = when {
+        validatingSessions == 0 -> Rank.C
+        validatingSessions == 1 -> Rank.C
+        validatingSessions == 2 -> Rank.S
+        validatingSessions == 3 -> Rank.S_PLUS
+        validatingSessions in 4..5 -> Rank.SS
+        else -> Rank.SSS
+    }
+    val rank = if (candidate.ordinal > cap.ordinal) cap else candidate
+    val rp = if (rank == candidate) scoreToRp(rawScore) else 99
+    val previousRank = previousScore?.let(::scoreToRank)
+    val previousRp = previousScore?.let(::scoreToRp)
+    val delta = if (previousRank == rank && previousRp != null) (rp - previousRp).coerceAtLeast(0) else 0
+    return ExerciseRankingResult(
+        mode = ExerciseRankingMode.PERSONAL,
+        score = rawScore.coerceIn(0.0, 100.0),
+        rank = rank,
+        rp = rp,
+        globallyComparable = false,
+        baselineSessions = evidence.size,
+        todayRpDelta = delta,
+        rankChanged = previousRank != null && previousRank != rank,
+        reasons = if (rank != candidate) listOf("High Personal Tiers require repeated validating sessions.") else emptyList(),
+    )
 }
 
 fun calculateExerciseRanking(input: ExerciseScoreInput, personalHistory: List<Double> = emptyList()): ExerciseRankingResult {
     val benchmark = exerciseScore(input)
-    return if (benchmark != null) ExerciseRankingResult(ExerciseRankingKind.BENCHMARK_RANK, benchmark, scoreToRank(benchmark), true)
-    else calculatePersonalExerciseTier(input.bestEstimated1rmKg, personalHistory)
+    if (benchmark != null) {
+        return ExerciseRankingResult(
+            mode = ExerciseRankingMode.GLOBAL,
+            score = benchmark,
+            rank = scoreToRank(benchmark),
+            rp = scoreToRp(benchmark),
+            globallyComparable = true,
+            baselineSessions = personalHistory.size,
+        )
+    }
+    return calculatePersonalExerciseTier(input.bestEstimated1rmKg, personalHistory)
 }
 
-/**
- * Normalized 0..100 capability score for an exercise, or null when it can't be
- * scored (no strength standard for the movement, or missing bodyweight / 1RM).
- */
 fun exerciseScore(input: ExerciseScoreInput): Double? {
-    val orm = input.bestEstimated1rmKg
-    val bodyweight = input.bodyweightKg
-    if (orm == null || orm <= 0.0 || bodyweight == null || bodyweight <= 0.0) {
-        return null
+    var orm = input.bestEstimated1rmKg ?: return null
+    val bodyweight = input.bodyweightKg ?: return null
+    if (orm <= 0.0 || bodyweight <= 0.0) return null
+    if (input.equipment == Equipment.DUMBBELL) {
+        val mode = input.dumbbellWeightMode ?: return null
+        if (mode == DumbbellWeightMode.PER_HAND) orm *= 2.0
     }
-    return scoreStrengthFromEstimated1RM(input.exerciseName, orm, bodyweight, input.sex)
+    return scoreStrengthFromEstimated1RM(
+        exerciseId = input.exerciseName,
+        estimated1RMkg = orm,
+        bodyweightKg = bodyweight,
+        sex = input.sex,
+        equipment = input.equipment,
+        variation = input.variation,
+    )
 }
 
 fun permanentExerciseRank(score: Double): Rank = scoreToRank(score)
-
-/**
- * Apply the new capability score to a prior rank with anti-inflation rules:
- * - Permanent rank is a high-water mark (never decreases on a worse session).
- * - A single update may not jump more than [ValidationLimits.MAX_RANK_JUMP] bands.
- * - Reaching S requires [ValidationLimits.MIN_SESSIONS_FOR_S] qualifying sessions.
- */
-fun nextExerciseRank(prev: Rank?, candidateScore: Double, qualifyingSessions: Int): Rank {
-    val ranks = Rank.entries
-    val prevIdx = prev?.ordinal ?: -1
-    var candIdx = scoreToRank(candidateScore).ordinal
-
-    if (prevIdx >= 0) {
-        candIdx = minOf(candIdx, prevIdx + ValidationLimits.MAX_RANK_JUMP)
-    }
-    if (ranks[candIdx].ordinal >= Rank.A.ordinal && qualifyingSessions < ValidationLimits.MIN_SESSIONS_FOR_S) {
-        candIdx = Rank.B.ordinal
-    }
-    return ranks[maxOf(prevIdx, candIdx)]
-}

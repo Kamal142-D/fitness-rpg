@@ -1,8 +1,10 @@
 package com.fitnessrpg.app.domain.model
 
 import com.fitnessrpg.app.domain.rank.Rank
+import kotlinx.serialization.Serializable
 
 /** The player's durable progression + attributes (mirrors `player_progression`). */
+@Serializable
 data class PlayerProgression(
     val level: Int,
     val currentXp: Int,
@@ -14,6 +16,10 @@ data class PlayerProgression(
     val disciplineScore: Double,
     val hunterScore: Double,
     val hunterRank: Rank,
+    val hunterRp: Int = 0,
+    val physiqueRp: Int = 0,
+    val strengthRp: Int = 0,
+    val conditioningRp: Int = 0,
     val currentStreakDays: Int,
     val longestStreakDays: Int,
     val hunterRankProvisional: Boolean = true,
@@ -24,6 +30,7 @@ data class PlayerProgression(
 )
 
 /** The user's profile (mirrors `profiles`). Nullable fields are unset pre-onboarding. */
+@Serializable
 data class Profile(
     val id: String,
     val displayName: String?,

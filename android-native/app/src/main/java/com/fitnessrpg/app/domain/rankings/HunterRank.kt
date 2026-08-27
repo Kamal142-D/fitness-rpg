@@ -2,6 +2,7 @@ package com.fitnessrpg.app.domain.rankings
 
 import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.domain.rank.clampScore
+import com.fitnessrpg.app.domain.rank.scoreToRp
 
 private data class PillarEvidence(
     val score: Double?,
@@ -9,7 +10,7 @@ private data class PillarEvidence(
     val provisional: Boolean,
 )
 
-/** Authoritative V2 calculation. XP, streaks and discipline never affect Hunter Rank. */
+/** Authoritative V3 calculation. XP, level, streaks and discipline are never inputs. */
 fun computeHunterRank(
     physique: PhysiqueRankResult?,
     strength: StrengthRankResult?,
@@ -29,24 +30,32 @@ fun computeHunterRank(
     }
     val provisional = missing || known.any { it.provisional }
 
-    val weighted = buildList {
-        physique?.score?.let { add(it to RankingV2Config.HUNTER_PHYSIQUE_WEIGHT) }
-        strength?.score?.let { add(it to RankingV2Config.HUNTER_STRENGTH_WEIGHT) }
-        conditioning?.score?.let { add(it to RankingV2Config.HUNTER_CONDITIONING_WEIGHT) }
-    }
-    val hunterScore = weighted.takeIf { it.isNotEmpty() }?.let { values ->
-        val base = values.sumOf { it.first * it.second } / values.sumOf { it.second }
-        clampScore(base * RankingV2Config.HUNTER_BASE_WEIGHT + values.minOf { it.first } * RankingV2Config.HUNTER_WEAKEST_WEIGHT)
+    val hunterScore = if (missing) null else {
+        val physiqueScore = physique!!.score!!
+        val strengthScore = strength!!.score!!
+        val conditioningScore = conditioning!!.score!!
+        val base = physiqueScore * RankingV3Config.HUNTER_PHYSIQUE_WEIGHT +
+            strengthScore * RankingV3Config.HUNTER_STRENGTH_WEIGHT +
+            conditioningScore * RankingV3Config.HUNTER_CONDITIONING_WEIGHT
+        clampScore(base * RankingV3Config.HUNTER_BASE_WEIGHT +
+            minOf(physiqueScore, strengthScore, conditioningScore) * RankingV3Config.HUNTER_WEAKEST_WEIGHT)
     }
 
     fun meets(candidate: Rank): Boolean {
-        val score = hunterScore ?: return candidate == Rank.E
-        val req = RankingV2Config.hunterRequirements.getValue(candidate)
+        val req = RankingV3Config.hunterRequirements.getValue(candidate)
+        if (hunterScore == null) {
+            if (candidate.ordinal > Rank.C.ordinal) return false
+            val knownScores = listOfNotNull(physique?.score, strength?.score, conditioning?.score)
+            if (knownScores.isEmpty() || knownScores.average() < req.minHunterScore) return candidate == Rank.E
+            return (physique?.score?.let { it >= req.minPhysique } ?: true) &&
+                (strength?.score?.let { it >= req.minStrength } ?: true) &&
+                (conditioning?.score?.let { it >= req.minConditioning } ?: true)
+        }
+        val score = hunterScore
         if (score < req.minHunterScore) return false
-        if (candidate.ordinal > PROVISIONAL_MAX_RANK.ordinal && missing) return false
-        return (physique?.score == null || physique.score >= req.minPhysique) &&
-            (strength?.score == null || strength.score >= req.minStrength) &&
-            (conditioning?.score == null || conditioning.score >= req.minConditioning)
+        return physique!!.score!! >= req.minPhysique &&
+            strength!!.score!! >= req.minStrength &&
+            conditioning!!.score!! >= req.minConditioning
     }
 
     var rank = Rank.E
@@ -54,14 +63,14 @@ fun computeHunterRank(
     val confidenceCap = when (confidence) {
         AssessmentConfidence.LOW -> Rank.C
         AssessmentConfidence.MEDIUM -> Rank.A
-        AssessmentConfidence.HIGH -> Rank.S
+        AssessmentConfidence.HIGH -> Rank.SSS
     }
-    val cap = minOf(confidenceCap, if (provisional) PROVISIONAL_MAX_RANK else Rank.S)
+    val cap = minOf(confidenceCap, if (missing) PROVISIONAL_MAX_RANK else Rank.SSS)
     if (rank.ordinal > cap.ordinal) rank = cap
 
     val next = Rank.entries.getOrNull(rank.ordinal + 1)
     val nextInfo = next?.let {
-        val req = RankingV2Config.hunterRequirements.getValue(it)
+        val req = RankingV3Config.hunterRequirements.getValue(it)
         NextRankInfo(it, req.minPhysique, req.minStrength, req.minConditioning, req.minHunterScore)
     }
 
@@ -83,15 +92,15 @@ fun computeHunterRank(
             if (physique?.score == null) add("Physique assessment is incomplete.")
             if (strength?.score == null) add("Strength assessment is incomplete.")
             if (conditioning?.score == null) add("Conditioning assessment is incomplete.")
-            if (provisional) add("Complete current assessments for every physical pillar to unlock B, A and S.")
-            if (confidence != AssessmentConfidence.HIGH) add("Recent validated evidence is required for S Rank.")
+            if (missing) add("Complete every physical pillar to unlock ranks above C.")
+            if (confidence != AssessmentConfidence.HIGH) add("High confidence is required for S, S+, SS and SSS.")
         }.distinct(),
         physique = physique,
         strength = strength,
         conditioning = conditioning,
+        rp = hunterScore?.let(::scoreToRp) ?: 0,
     )
 }
-
 /** Compatibility entry point for score-only callers and deterministic tests. */
 fun computeHunterRank(
     physiqueScore: Double?,
@@ -106,9 +115,8 @@ fun computeHunterRank(
     fun c(score: Double?) = score?.let { ConditioningRankResult(it, null, false, confidence, emptyList()) }
     return computeHunterRank(p(physiqueScore), s(strengthScore), c(conditioningScore))
 }
-
 private fun limitingAttributeFor(next: Rank, physique: Double?, strength: Double?, conditioning: Double?): PhysicalAttribute? {
-    val req = RankingV2Config.hunterRequirements.getValue(next)
+    val req = RankingV3Config.hunterRequirements.getValue(next)
     fun gap(score: Double?, minimum: Int): Double = if (score == null) minimum.toDouble() else maxOf(0.0, minimum - score)
     return listOf(
         PhysicalAttribute.PHYSIQUE to gap(physique, req.minPhysique),

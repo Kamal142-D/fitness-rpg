@@ -63,6 +63,10 @@ data class ProgressionInitUpdateDto(
     @SerialName("discipline_score") val disciplineScore: Double,
     @SerialName("hunter_score") val hunterScore: Double,
     @SerialName("hunter_rank") val hunterRank: String,
+    @SerialName("hunter_rp") val hunterRp: Int,
+    @SerialName("physique_rp") val physiqueRp: Int,
+    @SerialName("strength_rp") val strengthRp: Int,
+    @SerialName("conditioning_rp") val conditioningRp: Int,
     @SerialName("hunter_rank_provisional") val hunterRankProvisional: Boolean,
     @SerialName("hunter_rank_confidence") val hunterRankConfidence: String,
     @SerialName("hunter_rank_cap") val hunterRankCap: String?,
@@ -103,4 +107,14 @@ data class StrengthAssessmentSetInsertDto(
     val reps: Int,
     @SerialName("weight_mode") val weightMode: String?,
     val rpe: Double?,
+)
+
+@Serializable
+data class ExerciseRankStatUpdateDto(
+    @SerialName("rank_score") val rankScore: Double?,
+    @SerialName("exercise_rank") val exerciseRank: String?,
+    @SerialName("ranking_mode") val rankingMode: String,
+    @SerialName("rank_rp") val rankRp: Int,
+    @SerialName("qualifying_session_count") val qualifyingSessionCount: Int,
+    @SerialName("validation_count") val validationCount: Int,
 )
