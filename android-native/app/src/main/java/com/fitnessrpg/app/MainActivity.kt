@@ -7,6 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.fitnessrpg.app.ui.nav.AppRoot
+import com.fitnessrpg.app.ui.screens.main.HomeTabs
 import com.fitnessrpg.app.ui.theme.FitnessRpgTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,7 +19,22 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             FitnessRpgTheme {
-                AppRoot()
+                if (BuildConfig.DEBUG && intent.getBooleanExtra("previewGlass", false)) {
+                    HomeTabs(
+                        userId = "design-preview",
+                        onOpenGate = {},
+                        onOpenGates = {},
+                        onWorkoutStarted = {},
+                        onSettings = {},
+                        onAssessment = {},
+                        onOpenQuests = {},
+                        onOpenDailyMarch = {},
+                        onOpenHistory = {},
+                        onOpenPlan = {},
+                    )
+                } else {
+                    AppRoot()
+                }
             }
         }
     }

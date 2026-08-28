@@ -24,6 +24,7 @@ import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
 import com.fitnessrpg.app.ui.components.AppTextField
 import com.fitnessrpg.app.ui.components.ButtonVariant
+import com.fitnessrpg.app.ui.components.CardTone
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
@@ -68,7 +69,7 @@ private fun LoginForm(vm: AuthViewModel, onGoRegister: () -> Unit, onGoForgot: (
     val emailErr = if (showErrors) validateEmail(email) else null
     val pwErr = if (showErrors) validateLoginPassword(password) else null
 
-    AppCard {
+    AppCard(tone = CardTone.GLASS) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             AppTextField(email, { email = it }, label = "Email", error = emailErr, placeholder = "you@example.com", keyboardType = KeyboardType.Email)
             AppTextField(password, { password = it }, label = "Password", error = pwErr, secureToggle = true, imeAction = ImeAction.Done)
@@ -98,7 +99,7 @@ private fun RegisterForm(vm: AuthViewModel, onGoLogin: () -> Unit) {
     val pwErr = if (showErrors) validateNewPassword(password) else null
     val confErr = if (showErrors) validateConfirmPassword(password, confirm) else null
 
-    AppCard {
+    AppCard(tone = CardTone.GLASS) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             AppTextField(email, { email = it }, label = "Email", error = emailErr, placeholder = "you@example.com", keyboardType = KeyboardType.Email)
             AppTextField(password, { password = it }, label = "Password", error = pwErr, secureToggle = true)
@@ -126,7 +127,7 @@ private fun ForgotForm(vm: AuthViewModel, onGoLogin: () -> Unit) {
     var showErrors by remember { mutableStateOf(false) }
     val emailErr = if (showErrors) validateEmail(email) else null
 
-    AppCard {
+    AppCard(tone = CardTone.GLASS) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             AppText("We'll email you a link to set a new password.", tone = TextTone.SECONDARY)
             AppTextField(email, { email = it }, label = "Email", error = emailErr, placeholder = "you@example.com", keyboardType = KeyboardType.Email, imeAction = ImeAction.Done)

@@ -24,6 +24,7 @@ import com.fitnessrpg.app.domain.rankings.HunterRankResult
 import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
+import com.fitnessrpg.app.ui.components.CardTone
 import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.GateCard
 import com.fitnessrpg.app.ui.components.RankBadge
@@ -111,7 +112,7 @@ private fun Dashboard(
         )
 
         val hr = hunter
-        AppCard {
+        AppCard(tone = CardTone.GLASS) {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                 SystemMark()
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {

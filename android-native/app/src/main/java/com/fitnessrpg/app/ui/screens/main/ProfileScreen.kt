@@ -7,21 +7,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.annotation.DrawableRes
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import com.fitnessrpg.app.R
 import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.analytics.monthlyComparison
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
+import com.fitnessrpg.app.ui.components.CardTone
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.StatChip
 import com.fitnessrpg.app.ui.components.TextTone
@@ -59,7 +56,7 @@ fun ProfileScreen(
             t == null && player.error != null -> AppCard { AppText(friendlyDataError(player.error, "Couldn't load your profile."), tone = TextTone.DANGER) }
             t == null -> AppText("Loading profile…", tone = TextTone.SECONDARY)
             else -> {
-                AppCard {
+                AppCard(tone = CardTone.GLASS) {
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                         SystemMark()
                         Column(Modifier.weight(1f)) {
@@ -86,15 +83,15 @@ fun ProfileScreen(
 
                 SectionHeader("Hunter tools")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Training Plan", Icons.Filled.CalendarMonth, onOpenPlan, Modifier.weight(1f))
-                    HubTile("History", Icons.Filled.History, onOpenHistory, Modifier.weight(1f))
+                    HubTile("Training Plan", R.drawable.ic_plan, onOpenPlan, Modifier.weight(1f))
+                    HubTile("History", R.drawable.ic_history, onOpenHistory, Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Quests", Icons.Filled.Star, onOpenQuests, Modifier.weight(1f))
-                    HubTile("Daily March", Icons.AutoMirrored.Filled.DirectionsWalk, onOpenDailyMarch, Modifier.weight(1f))
+                    HubTile("Quests", R.drawable.ic_quests, onOpenQuests, Modifier.weight(1f))
+                    HubTile("Daily March", R.drawable.ic_march, onOpenDailyMarch, Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Settings", Icons.Filled.Settings, onSettings, Modifier.weight(1f))
+                    HubTile("Settings", R.drawable.ic_settings, onSettings, Modifier.weight(1f))
                     Box(Modifier.weight(1f))
                 }
             }
@@ -103,14 +100,14 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun HubTile(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun HubTile(label: String, @DrawableRes icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     AppCard(modifier = modifier.clickable(onClick = onClick)) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            Icon(imageVector = icon, contentDescription = label, tint = Palette.Primary)
+            Icon(painter = painterResource(icon), contentDescription = label, tint = Palette.Primary)
             AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
         }
     }

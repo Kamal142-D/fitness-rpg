@@ -20,8 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.ui.res.painterResource
+import com.fitnessrpg.app.R
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -280,7 +280,7 @@ private fun StepProgressRing(steps: Int, goal: Int, fraction: Float) {
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(28.dp))
+            Icon(painterResource(R.drawable.ic_march), contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(28.dp))
             AppText("%,d".format(steps), variant = TextVariant.DISPLAY, mono = true)
             AppText("of %,d steps".format(goal), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
         }

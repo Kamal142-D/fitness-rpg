@@ -15,6 +15,11 @@ object Palette {
     /** A hair above Surface2, for pressed/selected states. */
     val Surface3 = Color(0xFF1C2734)
 
+    /** Mangaku-inspired glass material: cool, translucent, and still legible. */
+    val GlassBase = Color(0xD916202C)
+    val GlassTint = Color(0x8A162838)
+    val GlassEdge = Color(0x4DE7EBEE)
+
     val Primary = Color(0xFF58D6FF) // system cyan; the sole action accent
     val PrimaryContainer = Color(0xFF123748)
     val Accent = Color(0xFF8B7CFF) // semantic rank accent only

@@ -37,8 +37,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Bumped past the RN app's versionCode (1) so this is seen as newer.
-        versionCode = 12
-        versionName = "0.8.0"
+        versionCode = 15
+        versionName = "0.8.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProp("SUPABASE_URL")}\"")
@@ -58,6 +58,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Keep development builds beside the signed production app so visual
+            // testing never overwrites or clears the user's real workout data.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // Signed with the same keystore as the original RN release.
             signingConfig = signingConfigs.getByName("release")
@@ -112,6 +118,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
+    implementation(libs.haze)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.kotlinx.coroutines.core)

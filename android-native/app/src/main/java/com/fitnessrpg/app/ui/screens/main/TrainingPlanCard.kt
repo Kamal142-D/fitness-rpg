@@ -70,7 +70,7 @@ private fun WorkoutBody(status: PlanStatus, onEnterGate: (String?) -> Unit, onOp
     val gateId = status.current.gateTemplateId
     if (gateId != null) {
         AppText("Next up: ${status.next.label}", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-        AppButton("▶  Start ${status.current.label}", onClick = { onEnterGate(gateId) }, modifier = Modifier.fillMaxWidth())
+        AppButton("Start ${status.current.label}", onClick = { onEnterGate(gateId) }, modifier = Modifier.fillMaxWidth())
     } else {
         AppText("No Gate mapped to this day yet.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
         AppButton("Choose a Gate", onClick = onOpenPlan, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())

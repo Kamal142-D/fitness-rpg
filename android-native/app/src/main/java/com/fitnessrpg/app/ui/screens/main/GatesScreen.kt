@@ -19,9 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
+import com.fitnessrpg.app.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +41,7 @@ import com.fitnessrpg.app.domain.model.GateTemplate
 import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
+import com.fitnessrpg.app.ui.components.CardTone
 import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.RankBadgeSize
 import com.fitnessrpg.app.ui.components.UnknownRankBadge
@@ -111,9 +110,9 @@ fun GatesScreen(
                 title = "Gates",
                 subtitle = "Choose a routine and enter when you're ready.",
                 action = {
-                    AppIconButton(Icons.Filled.Add, "Create Gate", onNewGate)
+                    AppIconButton(R.drawable.ic_add, "Create Gate", onNewGate)
                     Box {
-                        AppIconButton(Icons.Filled.MoreVert, "Gate options", { menuOpen = true }, enabled = selectedTemplate != null)
+                        AppIconButton(R.drawable.ic_more, "Gate options", { menuOpen = true }, enabled = selectedTemplate != null)
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             selectedTemplate?.let { template ->
                                 DropdownMenuItem(text = { Text("Open details") }, onClick = { menuOpen = false; onOpenGate(template.id) })
@@ -274,7 +273,7 @@ private fun GatePlan(detail: GateDetail, onStart: () -> Unit) {
         }
     }
 
-    AppCard(modifier = Modifier.fillMaxWidth(), padding = Spacing.none) {
+    AppCard(modifier = Modifier.fillMaxWidth(), tone = CardTone.GLASS, padding = Spacing.none) {
         detail.exercises.forEachIndexed { index, item ->
             Row(
                 modifier = Modifier

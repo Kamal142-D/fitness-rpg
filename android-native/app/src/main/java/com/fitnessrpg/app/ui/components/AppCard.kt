@@ -17,7 +17,7 @@ import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.Spacing
 
-enum class CardTone { FLAT, RAISED }
+enum class CardTone { FLAT, RAISED, GLASS }
 
 /**
  * Container primitive. Depth comes from a self-colored hairline edge and a tonal
@@ -32,11 +32,20 @@ fun AppCard(
 ) {
     val bg = if (tone == CardTone.RAISED) Palette.Surface1 else Palette.Surface2
     val shape = RoundedCornerShape(Radius.lg)
-    Column(
-        modifier = modifier
+    val surfaceModifier = if (tone == CardTone.GLASS) {
+        Modifier.appGlass(shape = shape, hazeState = null)
+    } else {
+        Modifier
             .clip(shape)
             .background(bg)
-            .border(BorderStroke(1.dp, if (tone == CardTone.RAISED) Palette.HairlineStrong else Palette.Hairline), shape)
+            .border(
+                BorderStroke(1.dp, if (tone == CardTone.RAISED) Palette.HairlineStrong else Palette.Hairline),
+                shape,
+            )
+    }
+    Column(
+        modifier = modifier
+            .then(surfaceModifier)
             .padding(padding),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
         content = content,

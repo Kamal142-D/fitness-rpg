@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
  *  + next-rank requirements, so the user sees exactly why they are ranked here. */
 @Composable
 fun HunterRankPanel(result: HunterRankResult, modifier: Modifier = Modifier) {
-    AppCard(modifier = modifier) {
+    AppCard(modifier = modifier, tone = CardTone.GLASS) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
             RankBadge(result.rank, size = RankBadgeSize.LG)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {

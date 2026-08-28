@@ -32,6 +32,7 @@ fun ScreenScaffold(
     padding: Dp = Spacing.xl,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val bottomClearance = LocalBottomBarClearance.current
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -39,11 +40,21 @@ fun ScreenScaffold(
             .systemBarsPadding(),
         contentAlignment = Alignment.TopCenter,
     ) {
+        // Content cards use the static frosted fallback. Keeping live backdrop
+        // capture to the floating navigation avoids full-screen blur layers on
+        // text-heavy, vertically scrolling screens.
+        GlassBackdrop(Modifier.fillMaxSize())
+
         val columnModifier = Modifier
             .fillMaxWidth()
             .widthIn(max = MaxContentWidth)
             .let { if (scroll) it.verticalScroll(rememberScrollState()) else it }
-            .padding(padding)
+            .padding(
+                start = padding,
+                top = padding,
+                end = padding,
+                bottom = padding + bottomClearance,
+            )
 
         Column(
             modifier = columnModifier,

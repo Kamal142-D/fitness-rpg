@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.fitnessrpg.app.R
 import androidx.compose.ui.unit.dp
 import com.fitnessrpg.app.ui.theme.MotionTokens
 import com.fitnessrpg.app.ui.theme.Palette
@@ -91,13 +91,13 @@ fun SystemMark(modifier: Modifier = Modifier) {
         modifier = modifier.size(44.dp).background(Palette.PrimaryContainer, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(22.dp))
+        Icon(painterResource(R.drawable.ic_awesome), contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(22.dp))
     }
 }
 
 @Composable
 fun AppIconButton(
-    icon: ImageVector,
+    @DrawableRes iconRes: Int,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -109,7 +109,7 @@ fun AppIconButton(
         enabled = enabled,
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = if (enabled) Palette.TextPrimary else Palette.TextTertiary,
         )
