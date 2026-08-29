@@ -41,6 +41,7 @@ data class RankAssessmentSnapshot(
     val conditioning: ConditioningRankResult,
     val profile: ProfileBasicsDto?,
     val latestBody: BodyAssessmentDto?,
+    val latestConditioning: ConditioningAssessmentDto? = null,
     /**
      * True only when the user genuinely has something to add or refresh: no body
      * assessment on record (or it has gone stale), or no strength evidence yet.
@@ -123,10 +124,19 @@ class AssessmentRepository {
         val hasStrengthEvidence = rankingStrengthInputs.isNotEmpty()
         val bodyFresh = body != null && !physique.stale
         val needsAssessmentUpdate = !bodyFresh || !hasStrengthEvidence
-        return RankAssessmentSnapshot(hunter, physique, strength, conditioning, profile, body, needsAssessmentUpdate)
+        return RankAssessmentSnapshot(
+            hunter = hunter,
+            physique = physique,
+            strength = strength,
+            conditioning = conditioning,
+            profile = profile,
+            latestBody = body,
+            latestConditioning = conditioningDto,
+            needsAssessmentUpdate = needsAssessmentUpdate,
+        )
     }
 
-    suspend fun recalculateAndPersist(userId: String): HunterRankResult {
+    suspend fun recalculateAndPersist(userId: String): RankAssessmentSnapshot {
         val snapshot = getRankAssessment(userId)
         val result = snapshot.hunter
         db.from("player_progression").update(
@@ -149,7 +159,7 @@ class AssessmentRepository {
                 assessmentUpdateRequired = snapshot.needsAssessmentUpdate,
             ),
         ) { filter { eq("user_id", userId) } }
-        return result
+        return snapshot
     }
 }
 

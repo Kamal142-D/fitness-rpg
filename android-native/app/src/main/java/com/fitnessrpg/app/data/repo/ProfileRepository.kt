@@ -23,6 +23,11 @@ sealed interface OnboardingOutcome {
     data class Error(val message: String) : OnboardingOutcome
 }
 
+sealed interface AssessmentUpdateOutcome {
+    data class Ok(val report: AssessmentImprovementReport) : AssessmentUpdateOutcome
+    data class Error(val message: String) : AssessmentUpdateOutcome
+}
+
 /** Reads the profile and persists the completed Awakening. */
 class ProfileRepository {
 
@@ -116,7 +121,9 @@ class ProfileRepository {
         body: BodyCompositionData?,
         strength: List<StrengthAssessmentInput>,
         conditioning: ConditioningInput?,
-    ): OnboardingOutcome = try {
+    ): AssessmentUpdateOutcome = try {
+        val assessmentRepository = AssessmentRepository()
+        val previous = assessmentRepository.getRankAssessment(userId)
         if (body != null) {
             db.from("profiles").update(ProfilePhysicalUpdateDto(body.heightCm, body.weightKg)) { filter { eq("id", userId) } }
             if (body.bodyFatPercent != null || body.waistCm != null || body.skeletalMuscleMassKg != null || body.leanBodyMassKg != null) {
@@ -150,13 +157,13 @@ class ProfileRepository {
                 ConditioningAssessmentInsertDto(userId, conditioning.testType.name.lowercase(), conditioning.result, null),
             )
         }
-        AssessmentRepository().recalculateAndPersist(userId)
+        val current = assessmentRepository.recalculateAndPersist(userId)
         // The rank, banner state and player data all just changed — drop the
         // cached screens so returning to Player/System shows the saved values.
         DataCache.invalidatePrefix("player:")
         DataCache.invalidatePrefix("system:")
-        OnboardingOutcome.Ok
+        AssessmentUpdateOutcome.Ok(compareAssessments(previous, current))
     } catch (e: Exception) {
-        OnboardingOutcome.Error(friendlyDataError(e, "Couldn't save your assessment. Please try again."))
+        AssessmentUpdateOutcome.Error(friendlyDataError(e, "Couldn't save your assessment. Please try again."))
     }
 }

@@ -8,6 +8,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,9 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -62,6 +62,7 @@ import com.fitnessrpg.app.domain.steps.estimatedDistanceKm
 import com.fitnessrpg.app.domain.steps.stepGoalFraction
 import com.fitnessrpg.app.ui.components.AppButton
 import com.fitnessrpg.app.ui.components.AppCard
+import com.fitnessrpg.app.ui.components.AppIconButton
 import com.fitnessrpg.app.ui.components.AppText
 import com.fitnessrpg.app.ui.components.ButtonVariant
 import com.fitnessrpg.app.ui.components.CardTone
@@ -70,16 +71,21 @@ import com.fitnessrpg.app.ui.components.StatChip
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
 import com.fitnessrpg.app.ui.components.ScreenHeader
+import com.fitnessrpg.app.ui.theme.MotionTokens
 import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.Spacing
+import com.fitnessrpg.app.ui.theme.motionDuration
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private data class MarchLoad(
     val healthGranted: Boolean,
@@ -153,17 +159,23 @@ fun DailyMarchScreen(userId: String, onBack: (() -> Unit)? = null) {
 
     ScreenScaffold {
         ScreenHeader(
-            title = "Walk. Clear. Advance.",
-            subtitle = "Every step fills today's March Gate.",
+            title = "Daily March",
+            subtitle = "Reach your step goal to earn today's XP.",
             action = {
-                SourceBadge(source)
-                if (onBack != null) AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
+                if (onBack != null) {
+                    AppIconButton(
+                        iconRes = R.drawable.ic_back,
+                        contentDescription = "Back",
+                        onClick = onBack,
+                        contained = true,
+                    )
+                }
             },
         )
 
         AppCard(modifier = Modifier.fillMaxWidth(), padding = Spacing.xl) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-                StepProgressRing(displayedSteps, goal, fraction)
+                StepProgressGauge(displayedSteps, goal, fraction)
                 AppText(
                     when {
                         fraction >= 1f -> "MARCH GATE CLEARED"
@@ -177,10 +189,11 @@ fun DailyMarchScreen(userId: String, onBack: (() -> Unit)? = null) {
             }
         }
 
-        if (source == StepSource.NONE) {
+        if (!load.healthGranted && (availability != HealthStepAvailability.UNAVAILABLE || source == StepSource.NONE)) {
             StepConnectionCard(
                 availability = availability,
                 sensorAvailable = sensorAvailable,
+                sensorConnected = source == StepSource.DEVICE_SENSOR,
                 onConnectHealth = { healthPermissionLauncher.launch(setOf(repository.healthReadPermission)) },
                 onEnableSensor = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) sensorPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
@@ -266,38 +279,63 @@ fun DailyMarchScreen(userId: String, onBack: (() -> Unit)? = null) {
 }
 
 @Composable
-private fun StepProgressRing(steps: Int, goal: Int, fraction: Float) {
-    val animated by animateFloatAsState(fraction, label = "daily-march-progress")
-    Box(Modifier.size(224.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(224.dp)) {
-            val stroke = 15.dp.toPx()
-            val inset = stroke / 2
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(Palette.Surface3, -90f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
-            if (animated > 0f) {
-                drawArc(Palette.Primary, -90f, 360f * animated, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+private fun StepProgressGauge(steps: Int, goal: Int, fraction: Float) {
+    val duration = motionDuration(MotionTokens.Standard)
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(duration),
+        label = "daily-march-progress",
+    )
+    val animatedSteps by animateIntAsState(
+        targetValue = steps,
+        animationSpec = tween(duration),
+        label = "daily-march-steps",
+    )
+    Box(
+        modifier = Modifier.fillMaxWidth().height(208.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxWidth().height(208.dp)) {
+            val center = Offset(size.width / 2f, size.height * .88f)
+            val outerRadius = min(size.width * .42f, size.height * .72f)
+            val innerRadius = outerRadius - 30.dp.toPx()
+            val segments = 31
+            val activeSegments = (animatedFraction * segments).roundToInt().coerceIn(0, segments)
+            val startAngle = 200f
+            val sweepAngle = 140f
+            val strokeWidth = 5.dp.toPx()
+
+            repeat(segments) { index ->
+                val progress = index.toFloat() / (segments - 1).toFloat()
+                val radians = Math.toRadians((startAngle + sweepAngle * progress).toDouble())
+                val directionX = cos(radians).toFloat()
+                val directionY = sin(radians).toFloat()
+                val start = Offset(
+                    center.x + directionX * innerRadius,
+                    center.y + directionY * innerRadius,
+                )
+                val end = Offset(
+                    center.x + directionX * outerRadius,
+                    center.y + directionY * outerRadius,
+                )
+                drawLine(
+                    color = if (index < activeSegments) Palette.Primary else Palette.Surface3,
+                    start = start,
+                    end = end,
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round,
+                )
             }
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.padding(top = 44.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Icon(painterResource(R.drawable.ic_march), contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(28.dp))
-            AppText("%,d".format(steps), variant = TextVariant.HERO, mono = true)
+            AppText("%,d".format(animatedSteps), variant = TextVariant.HERO, mono = true)
             AppText("of %,d steps".format(goal), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
         }
-    }
-}
-
-@Composable
-private fun SourceBadge(source: StepSource) {
-    val (label, color) = when (source) {
-        StepSource.HEALTH_CONNECT -> "HEALTH CONNECT" to Palette.Success
-        StepSource.DEVICE_SENSOR -> "DEVICE SENSOR" to Palette.Primary
-        StepSource.NONE -> "OFFLINE" to Palette.TextTertiary
-    }
-    Box(
-        Modifier.background(color.copy(alpha = .12f), RoundedCornerShape(Radius.pill))
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-    ) {
-        AppText(label, variant = TextVariant.CAPTION, color = color, mono = true)
     }
 }
 
@@ -305,14 +343,22 @@ private fun SourceBadge(source: StepSource) {
 private fun StepConnectionCard(
     availability: HealthStepAvailability,
     sensorAvailable: Boolean,
+    sensorConnected: Boolean,
     onConnectHealth: () -> Unit,
     onEnableSensor: () -> Unit,
     onUpdateHealthConnect: () -> Unit,
 ) {
     AppCard {
-        AppText("Awaken Daily March", variant = TextVariant.TITLE)
         AppText(
-            "Connect read-only steps for accurate daily totals. Fitness RPG never requests routes or location.",
+            if (availability == HealthStepAvailability.UNAVAILABLE) "Connect a step source" else "Health Connect is disconnected",
+            variant = TextVariant.TITLE,
+        )
+        AppText(
+            if (sensorConnected) {
+                "Your device step counter is active. Connect Health Connect if you want its read-only daily total instead."
+            } else {
+                "Connect read-only steps for accurate daily totals. Fitness RPG never requests routes or location."
+            },
             tone = TextTone.SECONDARY,
             modifier = Modifier.padding(top = Spacing.sm),
         )
@@ -322,7 +368,7 @@ private fun StepConnectionCard(
                 HealthStepAvailability.UPDATE_REQUIRED -> AppButton("Update Health Connect", onUpdateHealthConnect, modifier = Modifier.fillMaxWidth())
                 HealthStepAvailability.UNAVAILABLE -> Unit
             }
-            if (sensorAvailable) {
+            if (sensorAvailable && !sensorConnected) {
                 AppButton("Use device step counter", onEnableSensor, variant = ButtonVariant.SECONDARY, modifier = Modifier.fillMaxWidth())
             }
             if (availability == HealthStepAvailability.UNAVAILABLE && !sensorAvailable) {

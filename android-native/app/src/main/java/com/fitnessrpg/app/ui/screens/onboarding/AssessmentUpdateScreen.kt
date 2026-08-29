@@ -14,7 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import com.fitnessrpg.app.data.remote.friendlyDataError
-import com.fitnessrpg.app.data.repo.OnboardingOutcome
+import com.fitnessrpg.app.data.repo.AssessmentImprovementReport
+import com.fitnessrpg.app.data.repo.AssessmentUpdateOutcome
 import com.fitnessrpg.app.di.ServiceLocator
 import com.fitnessrpg.app.domain.rankings.BodyAssessmentSource
 import com.fitnessrpg.app.domain.rankings.BodyCompositionData
@@ -83,6 +84,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
     var initialized by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var improvementReport by remember { mutableStateOf<AssessmentImprovementReport?>(null) }
 
     val snapshot = load?.getOrNull()
     LaunchedEffect(snapshot) {
@@ -94,6 +96,11 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
             smm = snapshot.latestBody?.skeletalMuscleMassKg?.toString().orEmpty()
             initialized = true
         }
+    }
+
+    improvementReport?.let { report ->
+        AssessmentImprovementScreen(report = report, onDone = onSaved)
+        return
     }
 
     ScreenScaffold {
@@ -161,16 +168,19 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
                         skeletalMuscleMassKg = smm.toDoubleOrNull(), waistCm = waist.toDoubleOrNull(),
                         source = BodyAssessmentSource.MANUAL, sex = snapshot.profile?.sex,
                     ) else null
-                    val lifts = if (snapshot.strength.provisional) listOfNotNull(bench.input(), squat.input(), deadlift.input()) else emptyList()
-                    val conditioning = if (snapshot.conditioning.provisional || snapshot.conditioning.score == null) {
+                    val lifts = if (snapshot.strength.provisional || forceAll) listOfNotNull(bench.input(), squat.input(), deadlift.input()) else emptyList()
+                    val conditioning = if (snapshot.conditioning.provisional || snapshot.conditioning.score == null || forceAll) {
                         conditioningResult.toDoubleOrNull()?.let { ConditioningInput(conditioningType, it, sex = snapshot.profile?.sex) }
                     } else null
                     saving = true
                     error = null
                     scope.launch {
                         when (val outcome = ServiceLocator.profileRepository.completeAssessment(userId, body, lifts, conditioning)) {
-                            OnboardingOutcome.Ok -> onSaved()
-                            is OnboardingOutcome.Error -> { error = outcome.message; saving = false }
+                            is AssessmentUpdateOutcome.Ok -> {
+                                improvementReport = outcome.report
+                                saving = false
+                            }
+                            is AssessmentUpdateOutcome.Error -> { error = outcome.message; saving = false }
                         }
                     }
                 }, modifier = Modifier.fillMaxWidth(), loading = saving)
