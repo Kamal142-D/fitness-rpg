@@ -7,6 +7,7 @@ import com.fitnessrpg.app.data.local.ActiveWorkoutStore
 import com.fitnessrpg.app.data.repo.AnalyticsRepository
 import com.fitnessrpg.app.data.repo.AssessmentRepository
 import com.fitnessrpg.app.data.repo.GateRepository
+import com.fitnessrpg.app.data.repo.ImportRepository
 import com.fitnessrpg.app.data.repo.PrRepository
 import com.fitnessrpg.app.data.repo.ProfileRepository
 import com.fitnessrpg.app.data.repo.ProgressionRepository
@@ -37,6 +38,7 @@ object ServiceLocator {
     val assessmentRepository: AssessmentRepository by lazy { AssessmentRepository() }
     val profileRepository: ProfileRepository by lazy { ProfileRepository() }
     val trainingPlanRepository: TrainingPlanRepository by lazy { TrainingPlanRepository() }
+    val importRepository: ImportRepository by lazy { ImportRepository() }
     val activeWorkoutStore: ActiveWorkoutStore by lazy { ActiveWorkoutStore() }
     val stepRepository: StepRepository by lazy {
         check(::applicationContext.isInitialized) { "ServiceLocator.init(context) must run before step tracking." }

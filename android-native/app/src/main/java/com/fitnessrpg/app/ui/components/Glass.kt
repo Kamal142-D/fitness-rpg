@@ -8,9 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.fitnessrpg.app.ui.theme.Palette
@@ -38,6 +36,7 @@ internal val AppGlassStyle = HazeStyle(
 internal fun Modifier.appGlass(
     shape: Shape,
     hazeState: HazeState?,
+    border: Boolean = true,
 ): Modifier = this
     .clip(shape)
     .then(
@@ -50,38 +49,19 @@ internal fun Modifier.appGlass(
     // Mangaku's material is evenly smoky: no directional shine or vertical
     // reflection. Accent color belongs to the selected control, not the glass.
     .background(Palette.GlassTint.copy(alpha = 0.10f))
-    .border(
-        width = 1.dp,
-        color = Palette.GlassEdge,
-        shape = shape,
+    .then(
+        if (border) Modifier.border(width = 1.dp, color = Palette.GlassEdge, shape = shape)
+        else Modifier,
     )
 
-/** Low-contrast color behind glass so the blur has depth without becoming a gradient flood. */
+/** Neutral tonal depth behind glass, using only the reference surface ramp. */
 @Composable
 internal fun GlassBackdrop(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Palette.Background, Color(0xFF0A1018), Palette.Background),
+                colors = listOf(Palette.Background, Palette.Surface1, Palette.Background),
             ),
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Palette.Primary.copy(alpha = 0.12f), Color.Transparent),
-                center = Offset(size.width * 0.86f, size.height * 0.12f),
-                radius = size.minDimension * 0.72f,
-            ),
-            radius = size.minDimension * 0.72f,
-            center = Offset(size.width * 0.86f, size.height * 0.12f),
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Palette.Accent.copy(alpha = 0.07f), Color.Transparent),
-                center = Offset(size.width * 0.08f, size.height * 0.72f),
-                radius = size.minDimension * 0.62f,
-            ),
-            radius = size.minDimension * 0.62f,
-            center = Offset(size.width * 0.08f, size.height * 0.72f),
         )
     }
 }

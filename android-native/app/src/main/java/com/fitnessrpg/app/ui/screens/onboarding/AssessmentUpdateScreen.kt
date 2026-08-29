@@ -65,7 +65,7 @@ private class AssessmentLift(val exercise: String, val variation: String) {
 }
 
 @Composable
-fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Unit) {
+fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Unit, forceAll: Boolean = false) {
     val load by produceState<Result<com.fitnessrpg.app.data.repo.RankAssessmentSnapshot>?>(null, userId) {
         value = runCatching { ServiceLocator.assessmentRepository.getRankAssessment(userId) }
     }
@@ -97,8 +97,8 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
     }
 
     ScreenScaffold {
-        AppText("ASSESSMENT UPDATE", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
-        AppText("Calibrate your Rank", variant = TextVariant.DISPLAY)
+        AppText(if (forceAll) "RE-EVALUATION" else "ASSESSMENT UPDATE", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
+        AppText(if (forceAll) "Update your InBody" else "Calibrate your Rank", variant = TextVariant.DISPLAY)
         when {
             load == null -> AppText("Loading your assessments…", tone = TextTone.SECONDARY)
             load?.isFailure == true -> {
@@ -111,7 +111,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
                     snapshot.hunter.reasons.take(3).forEach { AppText(it, variant = TextVariant.CAPTION, tone = TextTone.SECONDARY) }
                 }
 
-                if (snapshot.physique.provisional || snapshot.physique.stale) {
+                if (snapshot.physique.provisional || snapshot.physique.stale || forceAll) {
                     AppCard {
                         AppText("BODY ASSESSMENT", variant = TextVariant.HEADING)
                         AppText("Add only measurements you actually know. Generic muscle mass is not accepted as skeletal muscle mass.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -123,7 +123,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
                     }
                 }
 
-                if (snapshot.strength.provisional) {
+                if (snapshot.strength.provisional || forceAll) {
                     AppCard {
                         AppText("STRENGTH ASSESSMENT", variant = TextVariant.HEADING)
                         AppText("Enter recent working sets. Three movement patterns are needed for A/S confidence.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -133,7 +133,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
                     }
                 }
 
-                if (snapshot.conditioning.provisional || snapshot.conditioning.score == null) {
+                if (snapshot.conditioning.provisional || snapshot.conditioning.score == null || forceAll) {
                     AppCard {
                         AppText("CONDITIONING", variant = TextVariant.HEADING)
                         AppText("Choose one standardized test, or leave the result blank to skip.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
@@ -149,7 +149,7 @@ fun AssessmentUpdateScreen(userId: String, onBack: () -> Unit, onSaved: () -> Un
 
                 error?.let { AppText(it, tone = TextTone.DANGER) }
                 AppButton("Save assessment", onClick = {
-                    val needsBody = snapshot.physique.provisional || snapshot.physique.stale
+                    val needsBody = snapshot.physique.provisional || snapshot.physique.stale || forceAll
                     val h = height.toDoubleOrNull()
                     val w = weight.toDoubleOrNull()
                     if (needsBody && (h == null || h !in 100.0..250.0 || w == null || w !in 30.0..300.0)) {

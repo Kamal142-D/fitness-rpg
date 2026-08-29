@@ -38,13 +38,13 @@ fun WorkoutCompleteScreen(onDone: () -> Unit) {
 
     ScreenScaffold {
         if (result == null) {
-            ScreenHeader("Gate cleared", "Workout saved", subtitle = "Your progress has been recorded.")
+            ScreenHeader("Workout saved", subtitle = "Your progress has been recorded.")
             AppButton("Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
             return@ScreenScaffold
         }
 
         val gate = result.gate
-        ScreenHeader("Gate cleared", result.aggregates.name, subtitle = "Your performance report is ready.")
+        ScreenHeader(result.aggregates.name, subtitle = "Your performance report is ready.")
 
         var showRankUp by remember { mutableStateOf(false) }
         LaunchedEffect(gate.rankUps) { showRankUp = gate.rankUps > 0 }

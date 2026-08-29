@@ -9,6 +9,7 @@ import com.fitnessrpg.app.data.dto.WorkoutSessionDto
 import com.fitnessrpg.app.data.remote.SupabaseProvider
 import com.fitnessrpg.app.domain.analytics.ExerciseStatInput
 import com.fitnessrpg.app.domain.analytics.PlayerData
+import com.fitnessrpg.app.domain.analytics.SessionSummary
 import com.fitnessrpg.app.domain.analytics.WeightPoint
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -21,16 +22,17 @@ class AnalyticsRepository {
 
     private val db get() = SupabaseProvider.client
 
+    suspend fun getRecentCompletedSessions(limit: Int = 60): List<SessionSummary> =
+        db.from("workout_sessions").select(
+            Columns.list("id", "name", "completed_at", "gate_clear_rank", "gate_difficulty_rank", "total_volume_kg", "duration_seconds"),
+        ) {
+            filter { eq("status", "completed") }
+            order("completed_at", Order.DESCENDING)
+            limit(limit.toLong())
+        }.decodeList<WorkoutSessionDto>().map { it.toSummary() }
+
     suspend fun getPlayerData(userId: String): PlayerData = coroutineScope {
-        val sessionsD = async {
-            db.from("workout_sessions").select(
-                Columns.list("id", "name", "completed_at", "gate_clear_rank", "gate_difficulty_rank", "total_volume_kg", "duration_seconds"),
-            ) {
-                filter { eq("status", "completed") }
-                order("completed_at", Order.DESCENDING)
-                limit(60)
-            }.decodeList<WorkoutSessionDto>()
-        }
+        val sessionsD = async { getRecentCompletedSessions() }
         val statsD = async {
             db.from("exercise_user_stats").select(Columns.list("exercise_id", "best_estimated_1rm_kg"))
                 .decodeList<StatBestDto>()
@@ -73,7 +75,7 @@ class AnalyticsRepository {
         val weights = weightsD.await()
 
         PlayerData(
-            sessions = sessions.map { it.toSummary() },
+            sessions = sessions,
             stats = stats.map { ExerciseStatInput(it.exerciseId, nameById[it.exerciseId] ?: "", it.bestEstimated1rmKg) },
             bodyweightKg = profile?.currentWeightKg,
             sex = profile?.sex,

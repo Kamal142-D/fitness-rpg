@@ -142,7 +142,6 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
 
     ScreenScaffold {
         ScreenHeader(
-            eyebrow = "Gate in progress",
             title = w.name,
             subtitle = "Log each working set as you complete it.",
             action = { AppButton("Cancel", onClick = {
@@ -159,7 +158,7 @@ fun WorkoutScreen(userId: String, onFinished: () -> Unit, onCancel: () -> Unit) 
         AnimatedVisibility(visible = restRemaining > 0, enter = fadeIn(), exit = fadeOut()) {
             AppCard {
                 StatusPill("Rest timer")
-                AppText(formatClock(restRemaining), variant = TextVariant.DISPLAY, tone = TextTone.ACCENT, mono = true)
+                AppText(formatClock(restRemaining), variant = TextVariant.HERO, tone = TextTone.ACCENT, mono = true)
                 AppText("Recover, breathe, and prepare for the next set.", variant = TextVariant.CAPTION, tone = TextTone.SECONDARY)
             }
         }

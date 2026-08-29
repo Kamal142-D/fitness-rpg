@@ -41,7 +41,6 @@ fun QuestsScreen(onBack: (() -> Unit)? = null) {
 
     ScreenScaffold {
         ScreenHeader(
-            eyebrow = "Daily objectives",
             title = "Quests",
             subtitle = "Complete objectives and claim your XP.",
             action = if (onBack != null) ({ AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST) }) else null,

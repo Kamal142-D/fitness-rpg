@@ -64,6 +64,7 @@ fun GatesScreen(
     onOpenGate: (String) -> Unit,
     onNewGate: () -> Unit,
     onWorkoutStarted: () -> Unit,
+    onImportPlan: () -> Unit = {},
 ) {
     val gates = rememberCached(
         "gates:$userId",
@@ -106,14 +107,14 @@ fun GatesScreen(
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
             ScreenHeader(
-                eyebrow = "Gate network",
                 title = "Gates",
                 subtitle = "Choose a routine and enter when you're ready.",
                 action = {
                     AppIconButton(R.drawable.ic_add, "Create Gate", onNewGate)
                     Box {
-                        AppIconButton(R.drawable.ic_more, "Gate options", { menuOpen = true }, enabled = selectedTemplate != null)
+                        AppIconButton(R.drawable.ic_more, "Gate options", { menuOpen = true })
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Import from link") }, onClick = { menuOpen = false; onImportPlan() })
                             selectedTemplate?.let { template ->
                                 DropdownMenuItem(text = { Text("Open details") }, onClick = { menuOpen = false; onOpenGate(template.id) })
                                 DropdownMenuItem(text = { Text("Duplicate") }, onClick = {

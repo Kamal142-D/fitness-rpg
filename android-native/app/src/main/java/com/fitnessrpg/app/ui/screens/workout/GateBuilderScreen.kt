@@ -70,7 +70,6 @@ fun GateBuilderScreen(userId: String, templateId: String? = null, onBack: () -> 
 
     ScreenScaffold {
         ScreenHeader(
-            eyebrow = if (templateId == null) "New routine" else "Edit routine",
             title = if (templateId == null) "Create Gate" else "Edit Gate",
             subtitle = "Choose exercises, then tap one to review its form guide.",
             action = { AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST) },

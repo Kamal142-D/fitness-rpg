@@ -31,7 +31,6 @@ fun HistoryScreen(userId: String, onBack: (() -> Unit)? = null) {
 
     ScreenScaffold {
         ScreenHeader(
-            eyebrow = "Battle record",
             title = "Gate History",
             subtitle = "Every completed Gate, newest first.",
             action = if (onBack != null) ({ AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST) }) else null,

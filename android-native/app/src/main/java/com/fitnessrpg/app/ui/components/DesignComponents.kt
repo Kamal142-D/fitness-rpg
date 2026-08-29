@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.fitnessrpg.app.R
 import androidx.compose.ui.unit.dp
@@ -40,7 +41,6 @@ import com.fitnessrpg.app.ui.theme.motionDuration
 
 @Composable
 fun ScreenHeader(
-    eyebrow: String,
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
@@ -52,7 +52,6 @@ fun ScreenHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            AppText(eyebrow.uppercase(), variant = TextVariant.CAPTION, tone = TextTone.ACCENT)
             AppText(title, variant = TextVariant.DISPLAY)
             subtitle?.let { AppText(it, variant = TextVariant.CAPTION, tone = TextTone.SECONDARY) }
         }
@@ -102,16 +101,26 @@ fun AppIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    contained: Boolean = false,
 ) {
+    val containerModifier = if (contained) {
+        Modifier
+            .clip(CircleShape)
+            .background(Palette.Surface2)
+            .border(BorderStroke(1.dp, Palette.HairlineStrong), CircleShape)
+    } else {
+        Modifier
+    }
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(48.dp),
+        modifier = modifier.size(48.dp).then(containerModifier),
         enabled = enabled,
     ) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = if (enabled) Palette.TextPrimary else Palette.TextTertiary,
+            modifier = Modifier.size(22.dp),
         )
     }
 }

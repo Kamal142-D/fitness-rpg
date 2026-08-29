@@ -37,8 +37,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Bumped past the RN app's versionCode (1) so this is seen as newer.
-        versionCode = 15
-        versionName = "0.8.3"
+        versionCode = 21
+        versionName = "0.8.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProp("SUPABASE_URL")}\"")
@@ -119,6 +119,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.haze)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.kotlinx.coroutines.core)

@@ -1,5 +1,6 @@
 package com.fitnessrpg.app.ui.screens.main
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,28 +8,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.annotation.DrawableRes
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.fitnessrpg.app.R
 import com.fitnessrpg.app.data.remote.friendlyDataError
 import com.fitnessrpg.app.domain.analytics.monthlyComparison
 import com.fitnessrpg.app.ui.components.AppCard
 import com.fitnessrpg.app.ui.components.AppText
 import com.fitnessrpg.app.ui.components.CardTone
+import com.fitnessrpg.app.ui.components.PlayerStatusCard
 import com.fitnessrpg.app.ui.components.ScreenScaffold
 import com.fitnessrpg.app.ui.components.StatChip
 import com.fitnessrpg.app.ui.components.TextTone
 import com.fitnessrpg.app.ui.components.TextVariant
-import com.fitnessrpg.app.ui.components.XpBar
 import com.fitnessrpg.app.ui.components.ScreenHeader
 import com.fitnessrpg.app.ui.components.SectionHeader
 import com.fitnessrpg.app.ui.components.StatusPill
 import com.fitnessrpg.app.ui.components.SystemMark
 import com.fitnessrpg.app.ui.theme.Palette
+import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 
@@ -45,11 +52,12 @@ fun ProfileScreen(
     onOpenHistory: () -> Unit,
     onOpenPlan: () -> Unit,
     onSettings: () -> Unit,
+    onReevaluate: () -> Unit,
 ) {
     val player = rememberPlayerBundle(userId)
 
     ScreenScaffold {
-        ScreenHeader("Hunter file", "Profile", subtitle = "Your identity, activity, and tools.")
+        ScreenHeader("Profile", subtitle = "Your identity, activity, and tools.")
 
         val t = player.data
         when {
@@ -67,12 +75,7 @@ fun ProfileScreen(
                     }
                 }
 
-                t.progression?.let { prog ->
-                    AppCard {
-                        SectionHeader("Progression", "Level ${prog.level}")
-                        XpBar(prog.level, prog.currentXp, modifier = Modifier.padding(top = Spacing.md).fillMaxWidth())
-                    }
-                }
+                t.progression?.let { prog -> PlayerStatusCard(prog, t.assessment.hunter) }
 
                 val monthly = monthlyComparison(t.data.sessions)
                 SectionHeader("This month", "Compared with last month")
@@ -82,33 +85,80 @@ fun ProfileScreen(
                 }
 
                 SectionHeader("Hunter tools")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Training Plan", R.drawable.ic_plan, onOpenPlan, Modifier.weight(1f))
-                    HubTile("History", R.drawable.ic_history, onOpenHistory, Modifier.weight(1f))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Quests", R.drawable.ic_quests, onOpenQuests, Modifier.weight(1f))
-                    HubTile("Daily March", R.drawable.ic_march, onOpenDailyMarch, Modifier.weight(1f))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    HubTile("Settings", R.drawable.ic_settings, onSettings, Modifier.weight(1f))
-                    Box(Modifier.weight(1f))
-                }
+                HunterToolsCard(
+                    onOpenPlan = onOpenPlan,
+                    onOpenHistory = onOpenHistory,
+                    onOpenQuests = onOpenQuests,
+                    onOpenDailyMarch = onOpenDailyMarch,
+                    onSettings = onSettings,
+                    onReevaluate = onReevaluate,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun HubTile(label: String, @DrawableRes icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    AppCard(modifier = modifier.clickable(onClick = onClick)) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            Icon(painter = painterResource(icon), contentDescription = label, tint = Palette.Primary)
-            AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
+private fun HunterToolsCard(
+    onOpenPlan: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenQuests: () -> Unit,
+    onOpenDailyMarch: () -> Unit,
+    onSettings: () -> Unit,
+    onReevaluate: () -> Unit,
+) {
+    AppCard(
+        modifier = Modifier.fillMaxWidth(),
+        tone = CardTone.GLASS,
+        padding = Spacing.md,
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            HunterTool("Re-evaluation", R.drawable.ic_reeval, onReevaluate, Modifier.weight(1f))
+            HunterTool("Training Plan", R.drawable.ic_plan, onOpenPlan, Modifier.weight(1f))
+            HunterTool("History", R.drawable.ic_history, onOpenHistory, Modifier.weight(1f))
         }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            HunterTool("Quests", R.drawable.ic_quests, onOpenQuests, Modifier.weight(1f))
+            HunterTool("Daily March", R.drawable.ic_march, onOpenDailyMarch, Modifier.weight(1f))
+            HunterTool("Settings", R.drawable.ic_settings, onSettings, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun HunterTool(
+    label: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(Radius.md))
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.xs, vertical = Spacing.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(Palette.PrimaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = Palette.Primary,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        AppText(
+            text = label,
+            variant = TextVariant.CAPTION,
+            tone = TextTone.PRIMARY,
+            maxLines = 1,
+        )
     }
 }

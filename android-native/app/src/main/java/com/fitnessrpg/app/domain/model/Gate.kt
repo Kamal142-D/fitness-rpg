@@ -70,8 +70,18 @@ data class GateDetail(
     val exercises: List<TemplateExerciseWithExercise>,
 )
 
-/** Input for creating a custom Gate. */
+/** Per-exercise set/rep target (used when importing a plan that specifies them). */
+data class GateExerciseTarget(
+    val exerciseId: String,
+    val sets: Int,
+    val repsMin: Int,
+    val repsMax: Int,
+)
+
+/** Input for creating a custom Gate. [targets] override the default per-exercise
+ *  set/rep scheme when present (keyed by exercise id). */
 data class CreateGateInput(
     val name: String,
     val exerciseIds: List<String>,
+    val targets: List<GateExerciseTarget> = emptyList(),
 )

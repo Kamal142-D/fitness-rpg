@@ -53,6 +53,27 @@ fun TrainingPlan.advanced(today: Long?): TrainingPlan {
 /** Keep today's slot but reset its clock, so a missed workout becomes "due today" again. */
 fun TrainingPlan.renewedToday(today: Long): TrainingPlan = copy(startedEpochDay = today)
 
+/** Reorder one cycle slot while keeping the same workout marked as today's slot. */
+fun TrainingPlan.reorderedSlot(fromIndex: Int, toIndex: Int): TrainingPlan {
+    if (fromIndex !in slots.indices || toIndex !in slots.indices || fromIndex == toIndex) return this
+    val reordered = slots.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
+    val movedCurrentIndex = when {
+        currentIndex == fromIndex -> toIndex
+        fromIndex < currentIndex && toIndex >= currentIndex -> currentIndex - 1
+        fromIndex > currentIndex && toIndex <= currentIndex -> currentIndex + 1
+        else -> currentIndex
+    }
+    return copy(slots = reordered, currentIndex = movedCurrentIndex)
+}
+
+/** Rename a cycle slot without changing whether it is a workout or rest slot. */
+fun TrainingPlan.renamedSlot(index: Int, label: String): TrainingPlan {
+    val cleanLabel = label.trim()
+    if (index !in slots.indices || cleanLabel.isEmpty()) return this
+    val renamed = slots.toMutableList().apply { this[index] = this[index].copy(label = cleanLabel) }
+    return copy(slots = renamed)
+}
+
 /**
  * Roll forward past any rest slot whose day has already passed. Rest is one day; the
  * user never sits on a stale rest. Returns the plan unchanged if nothing to roll.

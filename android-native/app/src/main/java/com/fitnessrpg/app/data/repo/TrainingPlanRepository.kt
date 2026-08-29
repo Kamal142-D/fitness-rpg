@@ -5,6 +5,8 @@ import com.fitnessrpg.app.domain.plan.TrainingPlan
 import com.fitnessrpg.app.domain.plan.advanced
 import com.fitnessrpg.app.domain.plan.defaultPlan
 import com.fitnessrpg.app.domain.plan.normalized
+import com.fitnessrpg.app.domain.plan.renamedSlot
+import com.fitnessrpg.app.domain.plan.reorderedSlot
 import com.fitnessrpg.app.domain.plan.renewedToday
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -58,6 +60,20 @@ class TrainingPlanRepository {
         val slots = plan.slots.toMutableList()
         slots[index] = slots[index].copy(gateTemplateId = gateTemplateId)
         val next = plan.copy(slots = slots)
+        save(userId, next)
+        return next
+    }
+
+    /** Reorder a cycle slot and preserve whichever slot is currently due today. */
+    suspend fun reorderSlot(userId: String, fromIndex: Int, toIndex: Int): TrainingPlan {
+        val next = get(userId).reorderedSlot(fromIndex, toIndex)
+        save(userId, next)
+        return next
+    }
+
+    /** Rename a workout/rest slot while preserving its Gate mapping and cycle position. */
+    suspend fun renameSlot(userId: String, index: Int, label: String): TrainingPlan {
+        val next = get(userId).renamedSlot(index, label)
         save(userId, next)
         return next
     }

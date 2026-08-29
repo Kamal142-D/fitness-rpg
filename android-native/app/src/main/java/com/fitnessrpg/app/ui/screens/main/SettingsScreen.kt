@@ -24,7 +24,7 @@ import com.fitnessrpg.app.ui.theme.Spacing
 fun SettingsScreen(email: String?, onBack: () -> Unit, onSignOut: () -> Unit) {
     val context = LocalContext.current
     ScreenScaffold {
-        ScreenHeader("Account", "Settings", subtitle = "App, privacy, and account controls.", action = {
+        ScreenHeader("Settings", subtitle = "App, privacy, and account controls.", action = {
             AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
         })
 

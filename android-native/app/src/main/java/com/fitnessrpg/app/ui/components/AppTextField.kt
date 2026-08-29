@@ -88,7 +88,7 @@ fun AppTextField(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     interactionSource = interaction,
-                    textStyle = TextStyle(color = Palette.TextPrimary, fontSize = 16.sp),
+                    textStyle = TextStyle(color = Palette.TextPrimary, fontSize = 14.sp),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(Palette.Primary),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),

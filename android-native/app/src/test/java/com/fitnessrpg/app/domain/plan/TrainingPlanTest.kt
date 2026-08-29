@@ -85,6 +85,36 @@ class TrainingPlanTest {
         assertNull(TrainingPlan(emptyList()).status(today))
     }
 
+    @Test
+    fun `reordering keeps the same slot current`() {
+        val plan = TrainingPlan(DEFAULT_PLAN_SLOTS, currentIndex = 1, startedEpochDay = today)
+        val reordered = plan.reorderedSlot(fromIndex = 1, toIndex = 5)
+
+        assertEquals("Pull", reordered.current?.label)
+        assertEquals(5, reordered.currentIndex)
+        assertEquals("Pull", reordered.slots[5].label)
+    }
+
+    @Test
+    fun `reordering across current slot adjusts its index`() {
+        val plan = TrainingPlan(DEFAULT_PLAN_SLOTS, currentIndex = 4, startedEpochDay = today)
+        val reordered = plan.reorderedSlot(fromIndex = 0, toIndex = 6)
+
+        assertEquals("Full Upper", reordered.current?.label)
+        assertEquals(3, reordered.currentIndex)
+    }
+
+    @Test
+    fun `renaming trims the label and preserves the mapping`() {
+        val mapped = DEFAULT_PLAN_SLOTS.toMutableList().apply {
+            this[0] = this[0].copy(gateTemplateId = "push-gate")
+        }
+        val renamed = TrainingPlan(mapped, currentIndex = 0).renamedSlot(0, "  Chest Day  ")
+
+        assertEquals("Chest Day", renamed.current?.label)
+        assertEquals("push-gate", renamed.current?.gateTemplateId)
+    }
+
     companion object {
         private const val TODAY_CLOCK = 1001L
     }

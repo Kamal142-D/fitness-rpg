@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -38,6 +38,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Color
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
 import com.fitnessrpg.app.R
 import com.fitnessrpg.app.domain.model.Exercise
 import com.fitnessrpg.app.ui.components.AppButton
@@ -57,17 +64,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private sealed interface GuideImageState {
-    data object Loading : GuideImageState
-    data object Unavailable : GuideImageState
-    data class Ready(
-        val frames: List<ImageBitmap>,
-        val usesWorkoutGuide: Boolean,
-    ) : GuideImageState
-}
-
-private val guideImageCache = LruCache<String, ImageBitmap>(24)
-
 @Composable
 fun ExerciseGuideDialog(
     exercise: Exercise,
@@ -86,13 +82,10 @@ fun ExerciseGuideDialog(
     val guideUrls = remember(guideEntry?.slug) {
         guideEntry?.slug?.let(::workoutGuideFrameUrls).orEmpty()
     }
-    val imageState by produceState<GuideImageState>(
-        initialValue = GuideImageState.Loading,
-        key1 = guideUrls,
-        key2 = exercise.imageUrl,
-    ) {
-        value = loadGuideImages(guideUrls, exercise.imageUrl)
-    }
+    // Prefer the exercise's own media (a gymvisual animated GIF) so it plays; fall
+    // back to a workout-guide still only when no media URL exists.
+    val usesWorkoutGuide = exercise.imageUrl.isNullOrBlank() && guideUrls.isNotEmpty()
+    val mediaUrl = exercise.imageUrl?.takeIf { it.isNotBlank() } ?: guideUrls.firstOrNull()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -126,7 +119,7 @@ fun ExerciseGuideDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
-                    GuideImage(imageState, exercise.name)
+                    GuideImage(mediaUrl, exercise.name)
 
                     val details = listOfNotNull(
                         exercise.primaryMuscleGroup?.takeIf { it.isNotBlank() }?.let { "Target: ${it.replaceFirstChar(Char::uppercase)}" },
@@ -162,7 +155,6 @@ fun ExerciseGuideDialog(
                         }
                     }
 
-                    val usesWorkoutGuide = (imageState as? GuideImageState.Ready)?.usesWorkoutGuide == true
                     if (usesWorkoutGuide) {
                         WorkoutGuideAttribution()
                     } else {
@@ -191,66 +183,45 @@ fun ExerciseGuideDialog(
 }
 
 @Composable
-private fun GuideImage(state: GuideImageState, exerciseName: String) {
-    val ready = state as? GuideImageState.Ready
-    var frameIndex by remember(ready) { mutableIntStateOf(0) }
-
-    LaunchedEffect(ready) {
-        val frameCount = ready?.frames?.size ?: 0
-        if (frameCount > 1) {
-            while (true) {
-                delay(900)
-                frameIndex = (frameIndex + 1) % frameCount
+private fun GuideImage(mediaUrl: String?, exerciseName: String) {
+    val context = LocalContext.current
+    // Coil ImageLoader with GIF support so gymvisual animations actually play.
+    val imageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .components {
+                if (android.os.Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory())
+                else add(GifDecoder.Factory())
             }
-        }
+            .build()
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
-            .heightIn(max = 420.dp)
+            // A definite, generous height so the demonstration is large; the media
+            // scales to fill it. gymvisual art sits on white, so a white ground
+            // avoids dark bars around it.
+            .height(340.dp)
             .clip(RoundedCornerShape(Radius.lg))
-            .background(Palette.Background),
+            .background(if (mediaUrl.isNullOrBlank()) Palette.Background else Color.White),
         contentAlignment = Alignment.Center,
     ) {
-        when (state) {
-            is GuideImageState.Ready -> Image(
-                bitmap = state.frames[frameIndex.coerceIn(state.frames.indices)],
-                contentDescription = "$exerciseName demonstration, frame ${frameIndex + 1} of ${state.frames.size}",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        if (state.frames.size > 1) frameIndex = (frameIndex + 1) % state.frames.size
-                    },
-                contentScale = ContentScale.Fit,
-            )
-            GuideImageState.Loading -> {
-                Image(
-                    painter = painterResource(R.drawable.exercise_guide_fallback),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.Fit,
-                    alpha = 0.22f,
-                )
-                CircularProgressIndicator(color = Palette.Primary)
-            }
-            GuideImageState.Unavailable -> Image(
+        if (mediaUrl.isNullOrBlank()) {
+            Image(
                 painter = painterResource(R.drawable.exercise_guide_fallback),
                 contentDescription = "Exercise guide illustration",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxSize().padding(Spacing.md),
                 contentScale = ContentScale.Fit,
             )
-        }
-
-        if (ready != null && ready.frames.size > 1) {
-            AppText(
-                "FRAME ${frameIndex + 1} / ${ready.frames.size}  ·  TAP TO ADVANCE",
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(Spacing.sm),
-                variant = TextVariant.CAPTION,
-                tone = TextTone.SECONDARY,
+        } else {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(mediaUrl).crossfade(true).build(),
+                imageLoader = imageLoader,
+                contentDescription = "$exerciseName demonstration",
+                modifier = Modifier.fillMaxSize().padding(Spacing.sm),
+                contentScale = ContentScale.Fit,
+                placeholder = painterResource(R.drawable.exercise_guide_fallback),
+                error = painterResource(R.drawable.exercise_guide_fallback),
             )
         }
     }
@@ -271,45 +242,4 @@ private fun WorkoutGuideAttribution() {
         variant = TextVariant.CAPTION,
         tone = TextTone.ACCENT,
     )
-}
-
-private suspend fun loadGuideImages(
-    workoutGuideUrls: List<String>,
-    fallbackUrl: String?,
-): GuideImageState {
-    if (workoutGuideUrls.isNotEmpty()) {
-        val frames = coroutineScope {
-            workoutGuideUrls.map { url -> async { loadGuideImage(url) } }.awaitAll().filterNotNull()
-        }
-        if (frames.isNotEmpty()) return GuideImageState.Ready(frames, usesWorkoutGuide = true)
-    }
-
-    val fallback = fallbackUrl?.takeIf(String::isNotBlank)?.let { loadGuideImage(it) }
-    return if (fallback != null) {
-        GuideImageState.Ready(listOf(fallback), usesWorkoutGuide = false)
-    } else {
-        GuideImageState.Unavailable
-    }
-}
-
-private suspend fun loadGuideImage(rawUrl: String): ImageBitmap? = withContext(Dispatchers.IO) {
-    synchronized(guideImageCache) { guideImageCache.get(rawUrl) }?.let { return@withContext it }
-    runCatching {
-        require(rawUrl.startsWith("https://")) { "Only HTTPS exercise media is supported" }
-        val connection = URL(rawUrl).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 12_000
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent", "FitnessRPG-Android")
-            if (connection.responseCode !in 200..299) error("Exercise image request failed")
-            val bitmap = connection.inputStream.use(BitmapFactory::decodeStream)
-                ?: error("Exercise image could not be decoded")
-            bitmap.asImageBitmap().also { image ->
-                synchronized(guideImageCache) { guideImageCache.put(rawUrl, image) }
-            }
-        } finally {
-            connection.disconnect()
-        }
-    }.getOrNull()
 }

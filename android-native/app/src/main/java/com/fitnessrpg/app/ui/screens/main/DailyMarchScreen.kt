@@ -153,7 +153,6 @@ fun DailyMarchScreen(userId: String, onBack: (() -> Unit)? = null) {
 
     ScreenScaffold {
         ScreenHeader(
-            eyebrow = "Daily March",
             title = "Walk. Clear. Advance.",
             subtitle = "Every step fills today's March Gate.",
             action = {
@@ -281,7 +280,7 @@ private fun StepProgressRing(steps: Int, goal: Int, fraction: Float) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(painterResource(R.drawable.ic_march), contentDescription = null, tint = Palette.Primary, modifier = Modifier.size(28.dp))
-            AppText("%,d".format(steps), variant = TextVariant.DISPLAY, mono = true)
+            AppText("%,d".format(steps), variant = TextVariant.HERO, mono = true)
             AppText("of %,d steps".format(goal), variant = TextVariant.CAPTION, tone = TextTone.SECONDARY, mono = true)
         }
     }

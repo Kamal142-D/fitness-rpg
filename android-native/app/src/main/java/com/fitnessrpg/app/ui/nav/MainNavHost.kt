@@ -1,6 +1,10 @@
 package com.fitnessrpg.app.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -9,6 +13,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fitnessrpg.app.di.ServiceLocator
+import com.fitnessrpg.app.ui.importer.ImportInbox
+import com.fitnessrpg.app.ui.screens.importer.ImportPlanScreen
 import com.fitnessrpg.app.ui.screens.main.DailyMarchScreen
 import com.fitnessrpg.app.ui.screens.main.HistoryScreen
 import com.fitnessrpg.app.ui.screens.main.HomeTabs
@@ -29,6 +35,12 @@ import com.fitnessrpg.app.ui.theme.motionDuration
 fun MainNavHost(userId: String, onSignOut: () -> Unit) {
     val nav = rememberNavController()
     val duration = motionDuration(MotionTokens.Standard)
+
+    // A link shared into the app (share sheet / deep link) opens the importer.
+    val sharedUrl by ImportInbox.pendingUrl.collectAsState()
+    LaunchedEffect(sharedUrl) {
+        if (sharedUrl != null) nav.navigate("import")
+    }
 
     NavHost(
         navController = nav,
@@ -56,6 +68,17 @@ fun MainNavHost(userId: String, onSignOut: () -> Unit) {
                 onOpenDailyMarch = { nav.navigate("march") },
                 onOpenHistory = { nav.navigate("history") },
                 onOpenPlan = { nav.navigate("plan") },
+                onImportPlan = { nav.navigate("import") },
+                onReevaluate = { nav.navigate("reevaluate") },
+            )
+        }
+        composable("import") {
+            val initialUrl = remember { ImportInbox.consume() }
+            ImportPlanScreen(
+                userId = userId,
+                initialUrl = initialUrl,
+                onBack = { nav.popBackStack() },
+                onCreated = { id -> nav.navigate("gate/$id") { popUpTo("home") } },
             )
         }
         composable("plan") {
@@ -82,6 +105,14 @@ fun MainNavHost(userId: String, onSignOut: () -> Unit) {
                 userId = userId,
                 onBack = { nav.popBackStack() },
                 onSaved = { nav.popBackStack() },
+            )
+        }
+        composable("reevaluate") {
+            AssessmentUpdateScreen(
+                userId = userId,
+                onBack = { nav.popBackStack() },
+                onSaved = { nav.popBackStack() },
+                forceAll = true,
             )
         }
         composable("gate_new") {

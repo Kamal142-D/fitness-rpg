@@ -43,7 +43,7 @@ fun GateDetailScreen(userId: String, templateId: String, onBack: () -> Unit, onE
     }
 
     ScreenScaffold {
-        ScreenHeader("Gate file", "Gate Details", subtitle = "Review the routine before you enter.", action = {
+        ScreenHeader("Gate Details", subtitle = "Review the routine before you enter.", action = {
             AppButton("Back", onClick = onBack, variant = ButtonVariant.GHOST)
         })
 

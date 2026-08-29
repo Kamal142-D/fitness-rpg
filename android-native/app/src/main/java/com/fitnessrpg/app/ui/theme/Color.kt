@@ -8,34 +8,41 @@ import androidx.compose.ui.graphics.Color
  * never full-screen floods.
  */
 object Palette {
-    val Background = Color(0xFF080B10)
-    val Surface1 = Color(0xFF10161F)
-    val Surface2 = Color(0xFF151D28)
+    // Neutral surface ramp from the supplied design-system reference.
+    val Background = Color(0xFF0E0E0E)
+    val Surface1 = Color(0xFF161616)
+    val Surface2 = Color(0xFF1D1D1D)
 
-    /** A hair above Surface2, for pressed/selected states. */
-    val Surface3 = Color(0xFF1C2734)
+    /** Highest neutral surface, for pressed and selected states. */
+    val Surface3 = Color(0xFF252525)
 
-    /** Mangaku-inspired glass material: cool, translucent, and still legible. */
-    val GlassBase = Color(0xD916202C)
-    val GlassTint = Color(0x8A162838)
-    val GlassEdge = Color(0x4DE7EBEE)
+    /** Mangaku-inspired glass, kept neutral so accent color stays purposeful. */
+    val GlassBase = Color(0xD9161616)
+    val GlassTint = Color(0x8A1D1D1D)
+    val GlassEdge = Color(0x4D6A6A6A)
 
-    val Primary = Color(0xFF58D6FF) // system cyan; the sole action accent
-    val PrimaryContainer = Color(0xFF123748)
-    val Accent = Color(0xFF8B7CFF) // semantic rank accent only
+    // The reference lime ramp hue-shifted into blue at matching luminance.
+    val PrimaryDark = Color(0xFF081114)
+    val PrimaryMid = Color(0xFF2792B5)
+    val Primary = Color(0xFF34C4F9)
+    val PrimaryContainer = PrimaryDark
 
-    val TextPrimary = Color(0xFFF2F6FA)
-    val TextSecondary = Color(0xFFA7B3C1)
+    // Purple remains reserved for semantic rank/analysis states.
+    val AccentContainer = Color(0xFF221C2B)
+    val Accent = Color(0xFFB580FF)
+
+    val TextPrimary = Color(0xFFF7F7F7)
+    val TextSecondary = Color(0xFFA0A0A0)
 
     /** Even quieter than secondary, for de-emphasized meta text. */
-    val TextTertiary = Color(0xFF697687)
+    val TextTertiary = Color(0xFF666666)
 
     val Success = Color(0xFF4ADE80)
     val Danger = Color(0xFFFF4D5A)
     val Warning = Color(0xFFF5BD4F)
 
-    /** Self-colored hairline: a light stroke at low opacity for tonal edges. */
-    val Hairline = Color(0x12F4F7FA)
-    val HairlineStrong = Color(0x26F4F7FA)
+    /** Opaque neutral strokes stay predictable across the four dark surfaces. */
+    val Hairline = Color(0xFF252525)
+    val HairlineStrong = Color(0xFF343434)
     val Scrim = Color(0xB3000000)
 }

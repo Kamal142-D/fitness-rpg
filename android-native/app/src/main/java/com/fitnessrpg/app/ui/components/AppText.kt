@@ -7,22 +7,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
+import com.fitnessrpg.app.ui.theme.AppFontFamily
+import com.fitnessrpg.app.ui.theme.AppTypography
 import com.fitnessrpg.app.ui.theme.Palette
 
-enum class TextVariant { DISPLAY, TITLE, HEADING, BODY, LABEL, CAPTION }
+enum class TextVariant { HERO, DISPLAY, TITLE, HEADING, BODY, LABEL, CAPTION }
 
 enum class TextTone { PRIMARY, SECONDARY, TERTIARY, ACCENT, SUCCESS, DANGER, INHERIT }
 
 private fun styleFor(variant: TextVariant): TextStyle = when (variant) {
-    TextVariant.DISPLAY -> TextStyle(fontSize = 36.sp, lineHeight = 41.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
-    TextVariant.TITLE -> TextStyle(fontSize = 24.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp)
-    TextVariant.HEADING -> TextStyle(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
-    TextVariant.BODY -> TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal)
-    TextVariant.LABEL -> TextStyle(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
-    TextVariant.CAPTION -> TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+    TextVariant.HERO -> AppTypography.displayLarge
+    TextVariant.DISPLAY -> AppTypography.headlineLarge
+    TextVariant.TITLE -> AppTypography.titleLarge
+    TextVariant.HEADING -> AppTypography.titleMedium
+    TextVariant.BODY -> AppTypography.bodyLarge
+    TextVariant.LABEL -> AppTypography.labelLarge
+    TextVariant.CAPTION -> AppTypography.labelSmall
 }
 
 private fun toneColor(tone: TextTone): Color = when (tone) {
@@ -50,7 +51,7 @@ fun AppText(
     color: Color = Color.Unspecified,
 ) {
     var style = styleFor(variant)
-    if (mono) style = style.copy(fontFamily = FontFamily.Monospace)
+    style = style.copy(fontFamily = if (mono) FontFamily.Monospace else AppFontFamily)
     val resolved = when {
         color != Color.Unspecified -> color
         tone == TextTone.INHERIT -> LocalContentColor.current

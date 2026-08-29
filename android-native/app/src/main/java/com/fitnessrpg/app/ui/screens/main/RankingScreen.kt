@@ -30,7 +30,7 @@ fun RankingScreen(userId: String, onAssessment: () -> Unit) {
     val player = rememberPlayerBundle(userId)
 
     ScreenScaffold {
-        ScreenHeader("System analysis", "Ranking", subtitle = "Your overall rank and movement mastery.")
+        ScreenHeader("Ranking", subtitle = "Your overall rank and movement mastery.")
 
         val t = player.data
         when {

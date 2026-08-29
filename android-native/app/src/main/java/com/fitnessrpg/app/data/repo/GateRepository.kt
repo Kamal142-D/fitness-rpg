@@ -114,14 +114,16 @@ class GateRepository {
             select(Columns.list("id"))
         }.decodeSingle<IdDto>()
 
+        val targetsById = input.targets.associateBy { it.exerciseId }
         val rows = input.exerciseIds.mapIndexed { i, exerciseId ->
+            val t = targetsById[exerciseId]
             TemplateExerciseInsertDto(
                 templateId = inserted.id,
                 exerciseId = exerciseId,
                 orderIndex = i,
-                targetSets = 3,
-                targetRepsMin = 8,
-                targetRepsMax = 12,
+                targetSets = t?.sets?.coerceIn(1, 10) ?: 3,
+                targetRepsMin = t?.repsMin?.coerceIn(1, 100) ?: 8,
+                targetRepsMax = (t?.repsMax ?: 12).coerceIn(t?.repsMin ?: 1, 100),
                 targetRpe = 8,
                 restSeconds = 90,
             )

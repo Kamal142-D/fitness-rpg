@@ -17,12 +17,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitnessrpg.app.domain.progression.xpProgress
-import com.fitnessrpg.app.domain.rank.scoreToRank
+import com.fitnessrpg.app.domain.rank.Rank
 import com.fitnessrpg.app.ui.theme.Palette
 import com.fitnessrpg.app.ui.theme.Radius
 import com.fitnessrpg.app.ui.theme.Spacing
 import com.fitnessrpg.app.ui.theme.rankColor
-import kotlin.math.roundToInt
 
 /** Level label + XP progress toward the next level. */
 @Composable
@@ -37,20 +36,25 @@ fun XpBar(level: Int, currentXp: Int, modifier: Modifier = Modifier) {
     }
 }
 
-/** One attribute row: label, derived rank letter, value, and a tonal bar. */
+/** One attribute row: authoritative pillar rank/RP and progress within that rank. */
 @Composable
-fun AttributeRow(label: String, value: Double, modifier: Modifier = Modifier) {
-    val v = value.roundToInt()
-    val rank = scoreToRank(value)
+fun AttributeRow(
+    label: String,
+    score: Double,
+    rank: Rank?,
+    rp: Int?,
+    modifier: Modifier = Modifier,
+) {
+    val display = attributeDisplay(score, rank, rp)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             AppText(label, variant = TextVariant.LABEL, tone = TextTone.SECONDARY)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                Text(rank.wire, color = rankColor(rank), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                AppText(v.toString(), variant = TextVariant.LABEL, mono = true)
+                Text(display.rank.wire, color = rankColor(display.rank), fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                AppText("${display.rp} RP", variant = TextVariant.LABEL, mono = true)
             }
         }
-        AppProgressBar((v / 100f).coerceIn(0f, 1f))
+        AppProgressBar(display.rp / 100f)
     }
 }
 

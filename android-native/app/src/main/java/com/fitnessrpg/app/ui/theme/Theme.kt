@@ -1,10 +1,12 @@
 package com.fitnessrpg.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
@@ -47,6 +49,11 @@ fun FitnessRpgTheme(
         colorScheme = AppColorScheme,
         typography = AppTypography,
         shapes = AppShapes,
-        content = content,
-    )
+    ) {
+        // Carry the app font into raw Text() calls that rely on the ambient style.
+        CompositionLocalProvider(
+            LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = AppFontFamily),
+            content = content,
+        )
+    }
 }
