@@ -45,12 +45,21 @@ class AppContainer(context: Context) {
         )
     }
 
+    /** Remembered per ThemeManager version: an update gets one fresh try automatically. */
+    private fun directBlockKey() = "direct.blocked.${themeManager.version}"
+
+    fun clearDirectBlock() = store.remove(directBlockKey())
+
     /** Tried first: needs nothing but ThemeManager's apply screen being open to all apps. */
     private val hyperOsDirectEngine = HyperOsThemeApplyEngine(
         host = DirectThemeHost(appContext),
         environment = themeEnvironment,
         store = store,
         direct = true,
+        blockedReason = {
+            store.get(directBlockKey())?.let { HyperOsThemeApplyEngine.BLOCKED_DIRECT_MESSAGE + " (" + it.decodeToString().lineSequence().first() + ")" }
+        },
+        onLaunchBlocked = { detail -> store.put(directBlockKey(), detail.encodeToByteArray()) },
     )
 
     private val hyperOsEngine = HyperOsThemeApplyEngine(

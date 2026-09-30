@@ -81,21 +81,44 @@ class DirectThemeHost(private val context: Context) : ThemeHost {
     override suspend fun launchApply(component: String, mtzPath: String): HostResult = withContext(Dispatchers.Main) {
         val cn = ComponentName.unflattenFromString(component)
             ?: return@withContext HostResult(false, "Bad component $component")
-        val intent = Intent()
+        fun baseIntent() = Intent()
             .setComponent(cn)
             .putExtra("theme_file_path", mtzPath)
             .putExtra("api_called_from", "test")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        // Also offer the file as a readable content URI in case ThemeManager can't open the path.
-        lastUri?.let { intent.setDataAndType(it, "application/octet-stream").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-        try {
-            context.startActivity(intent)
-            HostResult(true, "startActivity($component) accepted")
-        } catch (e: SecurityException) {
-            HostResult(false, "ThemeManager blocks other apps from its apply screen: ${e.message}")
-        } catch (e: ActivityNotFoundException) {
-            HostResult(false, "ThemeManager apply screen not found: ${e.message}")
+
+        // 1) Path in extras only. 2) Also the content URI with a read grant, in case that's what ThemeManager wants.
+        val attempts = buildList {
+            add("extras only" to baseIntent())
+            lastUri?.let { uri ->
+                add(
+                    "extras + content URI" to baseIntent()
+                        .setDataAndType(uri, "application/octet-stream")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                )
+            }
         }
+        val errors = mutableListOf<String>()
+        for ((label, intent) in attempts) {
+            try {
+                context.startActivity(intent)
+                return@withContext HostResult(true, "startActivity($component, $label) accepted")
+            } catch (e: Exception) {
+                errors += "$label: ${describe(e)}"
+            }
+        }
+        HostResult(false, errors.joinToString("\n"))
+    }
+
+    private fun describe(e: Exception): String {
+        val msg = e.message.orEmpty()
+        val why = when {
+            msg.contains("code -50") -> "blocked by HyperOS app-launch control (code -50)"
+            e is SecurityException -> "permission denied"
+            e is ActivityNotFoundException -> "apply screen not found"
+            else -> e.javaClass.simpleName
+        }
+        return "$why — ${msg.lineSequence().firstOrNull().orEmpty().take(200)}"
     }
 
     private companion object {

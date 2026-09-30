@@ -97,7 +97,7 @@ This uses the same theme logic as A, but only normal app APIs:
 
 | Date | Device / HyperOS build | Engine | Target themed? | Home | Dock | No frame | Launches app | Reboot | Restore | Notes |
 |------|------------------------|--------|----------------|------|------|----------|--------------|--------|---------|-------|
-| | | | | | | | | | | |
+| 2026-09-30 | Xiaomi klimt (2506BPN68G), HyperOS OS3.0.333.0.XOSMIXM, Android 17, ThemeManager 3.0.5.14-global | A0 (no Shizuku) | WhatsApp, stock theme (no applied `icons`; `.runtime/` unreadable) | – | – | – | – | – | – | `ApplyThemeForScreenshot` is exported with no permission, but `startActivity` fails with Xiaomi code **-50** (app-launch interception). Next: retry without the data URI; otherwise use A (Shizuku `am start`). |
 
 ## Decision
 

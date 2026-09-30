@@ -54,6 +54,10 @@ class HyperOsThemeApplyEngine(
     private val direct: Boolean = false,
     override val id: String = if (direct) DIRECT_ID else ID,
     override val displayName: String = if (direct) "HyperOS theme icons (no Shizuku)" else "HyperOS theme icons (Shizuku)",
+    /** Non-null when a previous attempt showed this host can't open ThemeManager (then the engine is Unsupported). */
+    private val blockedReason: suspend () -> String? = { null },
+    /** Called when ThemeManager refused to open, so the block can be remembered. */
+    private val onLaunchBlocked: suspend (String) -> Unit = {},
 ) : IconApplyEngine {
 
     override suspend fun checkCompatibility(): CompatibilityResult {
@@ -70,6 +74,9 @@ class HyperOsThemeApplyEngine(
                 listOf("ThemeManager does not expose an apply entry point on this build"),
                 missing,
             )
+        }
+        blockedReason()?.let { reason ->
+            return CompatibilityResult(id, SupportLevel.Unsupported, listOf(reason), missing)
         }
         if (direct && env.applyComponentPermission != null) {
             return CompatibilityResult(
@@ -197,7 +204,14 @@ class HyperOsThemeApplyEngine(
         }
         val stampBefore = before?.let { host.fileStamp(it.first) }
         val launch = host.launchApply(component, mtzPath)
-        if (!launch.ok) return ApplyResult.Failed("ThemeManager refused the apply request", launch.detail)
+        if (!launch.ok) {
+            onLaunchBlocked(launch.detail)
+            return if (direct) {
+                ApplyResult.Unsupported("$BLOCKED_DIRECT_MESSAGE\n${launch.detail}")
+            } else {
+                ApplyResult.Failed("ThemeManager refused the apply request", launch.detail)
+            }
+        }
 
         onStage(ApplyStage.RefreshingLauncher)
         val changed = waitForIconsChange(before, stampBefore)
@@ -234,6 +248,7 @@ class HyperOsThemeApplyEngine(
     companion object {
         const val ID = "hyperos-theme"
         const val DIRECT_ID = "hyperos-theme-direct"
+        const val BLOCKED_DIRECT_MESSAGE = "HyperOS blocks apps from opening Themes directly; Shizuku is needed on this phone"
         val DEFAULT_ICONS_PATHS = listOf("/data/system/theme/icons")
         const val DEFAULT_OUTPUT_DIR = "/sdcard/Download/IconShift"
         val DEFAULT_FALLBACK_BASE_PATHS = listOf("/system/media/theme/default/icons")

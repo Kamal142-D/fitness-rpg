@@ -100,7 +100,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                     Spacer(Modifier.padding(4.dp))
                     state.themeLines.forEach { Mono(it) }
                     if (state.iconPackSummary.isNotBlank()) Mono(state.iconPackSummary)
-                    TextButton(onClick = vm::refreshAll) { Text("Re-run checks") }
+                    TextButton(onClick = vm::rerunChecks) { Text("Re-run checks") }
                 }
             }
             item {

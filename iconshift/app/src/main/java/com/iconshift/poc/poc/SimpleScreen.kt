@@ -114,7 +114,8 @@ fun SimpleScreen(
         if (checked && engine == null && shizukuReady) {
             Text(stringResource(R.string.simple_no_method), color = MaterialTheme.colorScheme.error)
         }
-        if (engine != null) StatusArea(engine, vm, context)
+        val lastRun = state.engines.firstOrNull { it.id == state.lastRunEngineId } ?: engine
+        if (lastRun != null) StatusArea(lastRun, vm, context)
     }
 }
 
@@ -153,7 +154,8 @@ private fun StatusArea(engine: EngineUi, vm: PocViewModel, context: Context) {
         return
     }
     val outcome = engine.lastOutcome ?: return
-    val reason = engine.lastReason.orEmpty()
+    // First line only: details stay in the report.
+    val reason = engine.lastReason.orEmpty().lineSequence().firstOrNull().orEmpty()
     val message = when (outcome) {
         Outcome.Verified, Outcome.Unverified -> when {
             engine.lastAction == Action.Restore -> stringResource(R.string.simple_result_restored)

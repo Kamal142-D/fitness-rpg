@@ -126,6 +126,8 @@ data class PocState(
     val automaticEngine: String = "",
     /** Engine the one-tap "Apply icon" button uses; null when none is usable right now. */
     val automaticEngineId: String? = null,
+    /** Engine of the last Apply/Restore; its result stays visible even if Automatic switches engines. */
+    val lastRunEngineId: String? = null,
     val log: List<String> = emptyList(),
     val diagnosticsBusy: Boolean = false,
     val picker: PickerState = PickerState(),
@@ -150,6 +152,13 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // --- Probing -------------------------------------------------------------------------------
+
+    /** "Re-run checks": also forgets a remembered no-Shizuku block so it gets tried again. */
+    fun rerunChecks() {
+        container.clearDirectBlock()
+        log("Checks re-run; the no-Shizuku method will be tried again")
+        refreshAll()
+    }
 
     fun refreshAll() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -425,6 +434,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(lastRunEngineId = engineId) }
             updateEngine(engineId) {
                 it.copy(busy = true, stage = null, lastResult = null, lastAction = action, lastOutcome = null, lastReason = null)
             }

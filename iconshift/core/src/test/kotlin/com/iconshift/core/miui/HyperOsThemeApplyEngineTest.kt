@@ -171,4 +171,30 @@ class HyperOsThemeApplyEngineTest {
         val direct = HyperOsThemeApplyEngine(ShellThemeHost(FakeAccess(shell)), { env }, InMemoryEngineStateStore(), direct = true)
         assertEquals(SupportLevel.Unsupported, direct.checkCompatibility().level)
     }
+
+    @Test
+    fun `a remembered block makes the direct engine unsupported without touching anything`() = runTest {
+        val shell = themedShell()
+        val direct = HyperOsThemeApplyEngine(
+            ShellThemeHost(FakeAccess(shell)), { env }, InMemoryEngineStateStore(),
+            direct = true, blockedReason = { "blocked earlier (code -50)" },
+        )
+        assertEquals(SupportLevel.Unsupported, direct.checkCompatibility().level)
+        assertEquals(ApplyResult.Unsupported("blocked earlier (code -50)"), ApplyPipeline.apply(direct, target, icon))
+        assertTrue(shell.commands.none { it.startsWith("am start") })
+    }
+
+    @Test
+    fun `a refused launch in direct mode is remembered and reported as unsupported`() = runTest {
+        val shell = themedShell().apply { themeManagerWorks = false }
+        var remembered: String? = null
+        val direct = HyperOsThemeApplyEngine(
+            ShellThemeHost(FakeAccess(shell)), { env }, InMemoryEngineStateStore(),
+            pollIntervalMs = 10, pollAttempts = 2, direct = true, onLaunchBlocked = { remembered = it },
+        )
+        val result = ApplyPipeline.apply(direct, target, icon)
+        assertTrue(result.toString(), result is ApplyResult.Unsupported)
+        assertTrue((result as ApplyResult.Unsupported).reason.startsWith(HyperOsThemeApplyEngine.BLOCKED_DIRECT_MESSAGE))
+        assertTrue(remembered != null)
+    }
 }

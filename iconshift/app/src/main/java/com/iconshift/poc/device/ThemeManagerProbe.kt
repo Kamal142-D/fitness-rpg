@@ -1,7 +1,9 @@
 package com.iconshift.poc.device
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import java.io.File
 
 /**
@@ -18,6 +20,8 @@ data class ThemeManagerProbe(
     val candidates: List<String>,
     val exportedActivityCount: Int,
     val themeDirListing: List<String>,
+    /** ThemeManager activities that open a .mtz via ACTION_VIEW (a possible one-tap import path). */
+    val viewHandlers: List<String> = emptyList(),
 ) {
     fun lines(): List<String> = buildList {
         add("ThemeManager: ${if (installed) version else "not installed"}")
@@ -25,6 +29,7 @@ data class ThemeManagerProbe(
         if (applyComponent != null) add("Apply entry permission: ${applyPermission ?: "none (open to all apps)"}")
         add("Exported activities: $exportedActivityCount; theme-related candidates:")
         candidates.forEach { add("  - $it") }
+        add("Opens .mtz files (ACTION_VIEW): " + viewHandlers.ifEmpty { listOf("none") }.joinToString())
         add("/data/system/theme (app-visible):")
         themeDirListing.ifEmpty { listOf("<not listable>") }.forEach { add("  $it") }
     }
@@ -57,7 +62,24 @@ data class ThemeManagerProbe(
                 candidates = candidates,
                 exportedActivityCount = exported.size,
                 themeDirListing = listThemeDir(),
+                viewHandlers = viewHandlers(pm),
             )
+        }
+
+        private fun viewHandlers(pm: PackageManager): List<String> {
+            val probes = listOf(
+                "content/octet-stream" to Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(Uri.parse("content://media/external/downloads/1"), "application/octet-stream"),
+                "file/.mtz" to Intent(Intent.ACTION_VIEW).setData(Uri.parse("file:///sdcard/Download/IconShift/x.mtz")),
+                "file/.mtz any" to Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(Uri.parse("file:///sdcard/Download/IconShift/x.mtz"), "*/*"),
+            )
+            return probes.flatMap { (label, intent) ->
+                runCatching {
+                    @Suppress("DEPRECATION")
+                    pm.queryIntentActivities(intent.setPackage(PACKAGE), 0)
+                }.getOrDefault(emptyList()).map { "${it.activityInfo.name} [$label]" }
+            }.distinct()
         }
 
         private fun listThemeDir(): List<String> = runCatching {
