@@ -183,8 +183,6 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             if (_state.value.apps.isEmpty()) loadApps()
             refreshEngines()
             refreshTargetPreview()
-            // A theme apply that couldn't be confirmed: collect the facts right away for the report.
-            if (engineId.startsWith("hyperos-theme") && result is ApplyResult.AppliedUnverified) runDeepProbe()
         }
     }
 
@@ -472,6 +470,8 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             }
             refreshEngines()
             refreshTargetPreview()
+            // A theme apply that couldn't be confirmed: collect the facts right away for the report.
+            if (engineId.startsWith("hyperos-theme") && result is ApplyResult.AppliedUnverified) runDeepProbe()
         }
     }
 
