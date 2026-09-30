@@ -50,22 +50,23 @@ jobs:
       # It must stay a prerelease: the Fitness RPG in-app updater reads /releases/latest,
       # which skips prereleases, so this never shows up as a Fitness RPG update.
       - name: Reset rolling POC release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release delete iconshift-poc --cleanup-tag --yes --repo "${{ github.repository }}" || true
 
       - name: Stage APK for release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/iconshift-poc.apk"
 
       - name: Publish POC APK as prerelease
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: iconshift-poc
           target_commitish: ${{ github.sha }}
           name: IconShift POC (HyperOS test build)
+          draft: false
           prerelease: true
           make_latest: false
           files: iconshift-poc.apk
@@ -76,6 +77,16 @@ jobs:
             Then follow the device test protocol in iconshift/README.md (needs Shizuku).
 
             This is a test build, not a Fitness RPG release.
+
+      # Catch a broken download link here rather than on the phone.
+      - name: Verify release is public and downloadable
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          info=$(gh release view iconshift-poc --repo "${{ github.repository }}" --json isDraft,isPrerelease,assets)
+          echo "$info"
+          echo "$info" | jq -e '.isDraft == false and .isPrerelease == true and ([.assets[].name] | index("iconshift-poc.apk") != null)'
 
       - name: Upload test reports
         if: failure()
