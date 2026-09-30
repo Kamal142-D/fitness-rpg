@@ -13,6 +13,8 @@ data class ThemeManagerProbe(
     val installed: Boolean,
     val version: String,
     val applyComponent: String?,
+    /** Permission required to start [applyComponent]; null means any app may start it. */
+    val applyPermission: String?,
     val candidates: List<String>,
     val exportedActivityCount: Int,
     val themeDirListing: List<String>,
@@ -20,6 +22,7 @@ data class ThemeManagerProbe(
     fun lines(): List<String> = buildList {
         add("ThemeManager: ${if (installed) version else "not installed"}")
         add("Apply entry point: ${applyComponent ?: "NOT FOUND"}")
+        if (applyComponent != null) add("Apply entry permission: ${applyPermission ?: "none (open to all apps)"}")
         add("Exported activities: $exportedActivityCount; theme-related candidates:")
         candidates.forEach { add("  - $it") }
         add("/data/system/theme (app-visible):")
@@ -37,16 +40,20 @@ data class ThemeManagerProbe(
                 @Suppress("DEPRECATION")
                 pm.getPackageInfo(PACKAGE, PackageManager.GET_ACTIVITIES or PackageManager.MATCH_DISABLED_COMPONENTS)
             }.getOrNull()
-            val exported = info?.activities.orEmpty().filter { it.exported }.map { "${it.packageName}/${it.name}" }
-            val apply = exported.firstOrNull { c -> KNOWN_APPLY_ACTIVITIES.any { c.endsWith(".$it") } }
-            val candidates = exported.filter { c ->
-                val simple = c.substringAfterLast('.').lowercase()
+            val exportedInfos = info?.activities.orEmpty().filter { it.exported }
+            val exported = exportedInfos.map { "${it.packageName}/${it.name}" }
+            val applyInfo = exportedInfos.firstOrNull { a -> KNOWN_APPLY_ACTIVITIES.any { a.name.endsWith(".$it") } }
+            val apply = applyInfo?.let { "${it.packageName}/${it.name}" }
+            val candidates = exportedInfos.filter { a ->
+                val simple = a.name.substringAfterLast('.').lowercase()
                 CANDIDATE_WORDS.any { simple.contains(it) }
-            }
+            }.map { a -> "${a.packageName}/${a.name}" + ((a.permission ?: a.applicationInfo?.permission)?.let { " [needs $it]" } ?: " [open]") }
             return ThemeManagerProbe(
                 installed = info != null,
                 version = info?.let { "${it.versionName} (${it.longVersionCode})" }.orEmpty(),
                 applyComponent = apply,
+                // An activity without its own permission inherits the application's.
+                applyPermission = applyInfo?.let { it.permission ?: it.applicationInfo?.permission },
                 candidates = candidates,
                 exportedActivityCount = exported.size,
                 themeDirListing = listThemeDir(),

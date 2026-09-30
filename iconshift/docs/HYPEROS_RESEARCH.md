@@ -25,6 +25,18 @@ frame. Pinned shortcuts go through step 2 plus shortcut badging, which is why th
 
 ## Candidate mechanisms
 
+### A0. HyperOS theme icons without Shizuku (`hyperos-theme-direct`, tried first)
+
+This uses the same theme logic as A, but only normal app APIs:
+- It reads `/data/system/theme/icons` directly, since theme files are world-readable.
+- It falls back to `/system/media/theme/default/icons` as the base when no icons component is applied.
+- It writes the `.mtz` to `Download/IconShift/` through MediaStore, which needs no permission.
+- It opens ThemeManager's apply activity with a normal `startActivity`. The file path goes in `theme_file_path`, plus a read-granted content URI.
+
+**When it works:** only if the apply activity is exported **without a permission**. The probe records this, including any permission inherited from the application. If no theme icons are readable at all, it refuses rather than reset other apps' icons.
+
+**If it works:** no root, no Shizuku and no ADB are needed, and nothing needs to stay running in the background.
+
 ### A. HyperOS theme icons (`HyperOsThemeApplyEngine`, primary)
 
 - **What it does:** rewrites the applied `icons` component so it holds our PNG for the target

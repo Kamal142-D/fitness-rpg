@@ -54,7 +54,10 @@ fun SimpleScreen(
     val context = LocalContext.current
     val engine = state.engines.firstOrNull { it.id == state.automaticEngineId }
     val busy = engine?.busy == true
-    val ready = state.shizuku == ShizukuGate.Status.Ready
+    val shizukuReady = state.shizuku == ShizukuGate.Status.Ready
+    val checked = state.engines.isNotEmpty()
+    // Only ask for Shizuku when no method works without it (e.g. ThemeManager's apply screen is locked).
+    val needsSetup = checked && engine == null && !shizukuReady
 
     Column(
         Modifier
@@ -64,7 +67,7 @@ fun SimpleScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        if (!ready) SetupCard(state.shizuku, vm, context)
+        if (needsSetup) SetupCard(state.shizuku, vm, context)
 
         StepCard(stringResource(R.string.simple_step_app), onClick = onPickApp) {
             BigIcon(state.target?.icon, 64)
@@ -99,16 +102,16 @@ fun SimpleScreen(
 
         Button(
             onClick = vm::applyAutomatic,
-            enabled = ready && engine != null && !busy && state.target != null && state.icon != null,
+            enabled = engine != null && !busy && state.target != null && state.icon != null,
             modifier = Modifier.fillMaxWidth().height(56.dp),
         ) { Text(stringResource(R.string.simple_apply), style = MaterialTheme.typography.titleMedium) }
         OutlinedButton(
             onClick = vm::restoreAutomatic,
-            enabled = ready && engine != null && !busy && state.target != null,
+            enabled = engine != null && !busy && state.target != null,
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.simple_restore)) }
 
-        if (ready && engine == null && state.engines.isNotEmpty()) {
+        if (checked && engine == null && shizukuReady) {
             Text(stringResource(R.string.simple_no_method), color = MaterialTheme.colorScheme.error)
         }
         if (engine != null) StatusArea(engine, vm, context)

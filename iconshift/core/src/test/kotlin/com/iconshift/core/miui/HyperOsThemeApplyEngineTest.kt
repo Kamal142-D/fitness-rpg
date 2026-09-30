@@ -31,7 +31,7 @@ class HyperOsThemeApplyEngineTest {
     )
 
     private fun engine(shell: FakeShell, access: FakeAccess = FakeAccess(shell), e: HyperOsThemeEnvironment = env) =
-        HyperOsThemeApplyEngine(access, { e }, InMemoryEngineStateStore(), pollIntervalMs = 10, pollAttempts = 5, clock = { 42L })
+        HyperOsThemeApplyEngine(ShellThemeHost(access), { e }, InMemoryEngineStateStore(), pollIntervalMs = 10, pollAttempts = 5, clock = { 42L })
 
     private fun themedShell() = FakeShell(iconsPath).apply {
         put(
@@ -127,6 +127,48 @@ class HyperOsThemeApplyEngineTest {
         val shell = themedShell()
         val result = ApplyPipeline.apply(engine(shell), AppTarget("x'; reboot; '", null, "bad"), icon)
         assertTrue(result is ApplyResult.Failed)
-        assertTrue(shell.commands.isEmpty())
+        assertTrue(shell.commands.none { it.startsWith("am start") })
+        assertEquals(setOf(iconsPath), shell.files.keys) // nothing written
+    }
+
+    @Test
+    fun `direct mode is unsupported when the apply screen needs a permission`() = runTest {
+        val shell = themedShell()
+        val direct = HyperOsThemeApplyEngine(
+            ShellThemeHost(FakeAccess(shell)),
+            { env.copy(applyComponentPermission = "miui.permission.USE_INTERNAL_GENERAL_API") },
+            InMemoryEngineStateStore(),
+            direct = true,
+        )
+        assertEquals(HyperOsThemeApplyEngine.DIRECT_ID, direct.id)
+        assertEquals(SupportLevel.Unsupported, direct.checkCompatibility().level)
+        assertTrue(ApplyPipeline.apply(direct, target, icon) is ApplyResult.Unsupported)
+    }
+
+    @Test
+    fun `unreadable theme icons downgrade to limited`() = runTest {
+        val shell = FakeShell(iconsPath) // nothing at the icons path
+        assertEquals(SupportLevel.Limited, engine(shell).checkCompatibility().level)
+    }
+
+    @Test
+    fun `stock theme uses the system default icons as base so other apps keep theirs`() = runTest {
+        val shell = FakeShell(iconsPath).apply {
+            put(
+                "/system/media/theme/default/icons",
+                MiuiIconsZip.write(linkedMapOf("res/drawable-xxhdpi/com.android.chrome.png" to fakePng("chrome-default"))),
+            )
+        }
+        assertTrue(ApplyPipeline.apply(engine(shell), target, icon) is ApplyResult.Verified)
+        val applied = MiuiIconsZip.read(shell.files.getValue(iconsPath))
+        assertArrayEquals(fakePng("chrome-default"), applied["res/drawable-xxhdpi/com.android.chrome.png"])
+        assertArrayEquals(icon.pngBytes, applied["res/drawable-xxhdpi/com.whatsapp.png"])
+    }
+
+    @Test
+    fun `direct mode refuses when no theme icons are readable`() = runTest {
+        val shell = FakeShell(iconsPath)
+        val direct = HyperOsThemeApplyEngine(ShellThemeHost(FakeAccess(shell)), { env }, InMemoryEngineStateStore(), direct = true)
+        assertEquals(SupportLevel.Unsupported, direct.checkCompatibility().level)
     }
 }
