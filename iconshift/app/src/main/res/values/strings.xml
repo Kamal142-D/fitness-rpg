@@ -1,4 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">IconShift POC</string>
+
+    <!-- Simple (default) screen -->
+    <string name="simple_title">IconShift</string>
+    <string name="simple_advanced">Advanced</string>
+    <string name="simple_back">Back</string>
+
+    <string name="simple_setup_title">One-time setup</string>
+    <string name="simple_setup_install_body">IconShift needs the free Shizuku app to change icons. Install it, then start it with Wireless debugging.</string>
+    <string name="simple_setup_get">Get Shizuku</string>
+    <string name="simple_setup_start_body">Open Shizuku, tap Start (Wireless debugging), then come back here.</string>
+    <string name="simple_setup_open">Open Shizuku</string>
+    <string name="simple_setup_allow_body">Allow IconShift to use Shizuku.</string>
+    <string name="simple_setup_allow">Allow</string>
+
+    <string name="simple_step_app">1. App</string>
+    <string name="simple_step_icon">2. New icon</string>
+    <string name="simple_choose_app">Tap to choose an app</string>
+    <string name="simple_choose_icon">Tap to choose from your icon packs</string>
+    <string name="simple_change">Change</string>
+    <string name="simple_test_icon">Test icon</string>
+    <string name="simple_gallery">From gallery</string>
+
+    <string name="simple_apply">Apply icon</string>
+    <string name="simple_restore">Restore original</string>
+    <string name="simple_no_method">Changing icons isn\'t available on this phone yet.</string>
+
+    <string name="simple_stage_preparing">Getting ready…</string>
+    <string name="simple_stage_applying">Changing the icon…</string>
+    <string name="simple_stage_refreshing">Refreshing the home screen…</string>
+    <string name="simple_stage_verifying">Checking it worked…</string>
+
+    <string name="simple_result_done">Done! Check your home screen.</string>
+    <string name="simple_result_unverified">Applied, but IconShift couldn\'t confirm it. Check your home screen.</string>
+    <string name="simple_result_restored">Original icon restored.</string>
+    <string name="simple_result_failed">It didn\'t work: %1$s</string>
+    <string name="simple_result_setup">Finish the setup above first.</string>
+    <string name="simple_result_unsupported">Not supported on this phone yet: %1$s</string>
+
+    <string name="simple_ask_worked">Did the icon change on your home screen?</string>
+    <string name="simple_yes">Yes</string>
+    <string name="simple_no">No</string>
+    <string name="simple_thanks">Thanks! Tap \"Send report\" so the details can be checked.</string>
+    <string name="simple_send_report">Send report</string>
 </resources>

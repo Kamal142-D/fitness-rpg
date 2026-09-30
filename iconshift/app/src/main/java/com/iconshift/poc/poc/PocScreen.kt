@@ -1,6 +1,6 @@
 package com.iconshift.poc.poc
 
-import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,11 +38,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iconshift.core.applyengine.ApplyStage
+import com.iconshift.poc.R
 import com.iconshift.poc.shizuku.ShizukuGate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,14 +61,31 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var pickingApp by remember { mutableStateOf(false) }
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = advanced) { advanced = false }
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.usePickedImage(uri)
     }
 
+    val launchImagePicker = {
+        pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("IconShift · HyperOS icon POC") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(if (advanced) "Advanced · test details" else stringResource(R.string.simple_title)) },
+                actions = {
+                    TextButton(onClick = { advanced = !advanced }) {
+                        Text(stringResource(if (advanced) R.string.simple_back else R.string.simple_advanced))
+                    }
+                },
+            )
+        },
     ) { padding ->
-        LazyColumn(
+        if (!advanced) {
+            SimpleScreen(state, vm, padding, onPickApp = { pickingApp = true }, onPickImage = launchImagePicker)
+        } else LazyColumn(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
@@ -129,9 +149,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                             Button(onClick = vm::openIconPacks) { Text("From icon pack") }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = vm::useGeneratedIcon) { Text("Test icon") }
-                                OutlinedButton(onClick = {
-                                    pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                }) { Text("Pick image") }
+                                OutlinedButton(onClick = launchImagePicker) { Text("Pick image") }
                             }
                         }
                     }
@@ -156,13 +174,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                         OutlinedButton(onClick = vm::dumpThemeManager, enabled = !state.diagnosticsBusy) { Text("ThemeManager") }
                         OutlinedButton(onClick = vm::restartLauncher, enabled = !state.diagnosticsBusy) { Text("Restart launcher") }
                     }
-                    Button(onClick = {
-                        val send = Intent(Intent.ACTION_SEND)
-                            .setType("text/plain")
-                            .putExtra(Intent.EXTRA_SUBJECT, "IconShift POC report")
-                            .putExtra(Intent.EXTRA_TEXT, vm.buildReport())
-                        context.startActivity(Intent.createChooser(send, "Export report"))
-                    }) { Text("Export report") }
+                    Button(onClick = { shareReport(context, vm) }) { Text("Export report") }
                 }
             }
             item {

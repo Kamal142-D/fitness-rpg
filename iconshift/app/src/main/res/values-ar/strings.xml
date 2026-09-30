@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="simple_title">IconShift</string>
+    <string name="simple_advanced">متقدم</string>
+    <string name="simple_back">رجوع</string>
+
+    <string name="simple_setup_title">إعداد لمرة واحدة</string>
+    <string name="simple_setup_install_body">IconShift محتاج تطبيق Shizuku المجاني علشان يغيّر الأيقونات. نزّله، وبعدين شغّله من Wireless debugging.</string>
+    <string name="simple_setup_get">تنزيل Shizuku</string>
+    <string name="simple_setup_start_body">افتح Shizuku واضغط Start (Wireless debugging)، وبعدين ارجع هنا.</string>
+    <string name="simple_setup_open">افتح Shizuku</string>
+    <string name="simple_setup_allow_body">اسمح لـ IconShift يستخدم Shizuku.</string>
+    <string name="simple_setup_allow">سماح</string>
+
+    <string name="simple_step_app">١. التطبيق</string>
+    <string name="simple_step_icon">٢. الأيقونة الجديدة</string>
+    <string name="simple_choose_app">اضغط لاختيار تطبيق</string>
+    <string name="simple_choose_icon">اضغط للاختيار من الـ icon packs بتاعتك</string>
+    <string name="simple_change">تغيير</string>
+    <string name="simple_test_icon">أيقونة تجربة</string>
+    <string name="simple_gallery">من المعرض</string>
+
+    <string name="simple_apply">غيّر الأيقونة</string>
+    <string name="simple_restore">رجّع الأصلية</string>
+    <string name="simple_no_method">تغيير الأيقونات مش متاح على الموبايل ده لسه.</string>
+
+    <string name="simple_stage_preparing">بيجهّز…</string>
+    <string name="simple_stage_applying">بيغيّر الأيقونة…</string>
+    <string name="simple_stage_refreshing">بيحدّث الشاشة الرئيسية…</string>
+    <string name="simple_stage_verifying">بيتأكد إنها اتغيّرت…</string>
+
+    <string name="simple_result_done">تمام! بص على الشاشة الرئيسية.</string>
+    <string name="simple_result_unverified">اتطبّقت، بس IconShift ماقدرش يتأكد. بص على الشاشة الرئيسية.</string>
+    <string name="simple_result_restored">الأيقونة الأصلية رجعت.</string>
+    <string name="simple_result_failed">ماشتغلتش: %1$s</string>
+    <string name="simple_result_setup">كمّل الإعداد اللي فوق الأول.</string>
+    <string name="simple_result_unsupported">مش مدعوم على الموبايل ده لسه: %1$s</string>
+
+    <string name="simple_ask_worked">الأيقونة اتغيّرت على الشاشة الرئيسية؟</string>
+    <string name="simple_yes">أيوه</string>
+    <string name="simple_no">لأ</string>
+    <string name="simple_thanks">شكراً! اضغط \"ابعت التقرير\" علشان نشوف التفاصيل.</string>
+    <string name="simple_send_report">ابعت التقرير</string>
+</resources>

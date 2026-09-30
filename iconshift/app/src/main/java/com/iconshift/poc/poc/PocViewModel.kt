@@ -73,7 +73,23 @@ data class EngineUi(
     val stage: ApplyStage? = null,
     val lastResult: String? = null,
     val checks: Map<Check, Boolean> = emptyMap(),
+    /** Plain outcome of the last Apply/Restore, for the simple screen. */
+    val lastAction: Action? = null,
+    val lastOutcome: Outcome? = null,
+    val lastReason: String? = null,
 )
+
+enum class Action { Apply, Restore }
+
+enum class Outcome { Verified, Unverified, NeedsSetup, Unsupported, Failed }
+
+private fun outcomeOf(r: ApplyResult): Pair<Outcome, String?> = when (r) {
+    is ApplyResult.Verified -> Outcome.Verified to null
+    is ApplyResult.AppliedUnverified -> Outcome.Unverified to null
+    is ApplyResult.NeedsSetup -> Outcome.NeedsSetup to r.requirements.joinToString { it.description }
+    is ApplyResult.Unsupported -> Outcome.Unsupported to r.reason
+    is ApplyResult.Failed -> Outcome.Failed to r.reason
+}
 
 data class PackUi(
     val info: IconPackInfo,
@@ -361,7 +377,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- Engine operations ---------------------------------------------------------------------
 
-    fun apply(engineId: String) = runEngine(engineId, "Apply") { engine, target, onStage ->
+    fun apply(engineId: String) = runEngine(engineId, Action.Apply) { engine, target, onStage ->
         val icon = _state.value.icon ?: return@runEngine ApplyResult.Failed("No icon selected")
         ApplyPipeline.apply(engine, target, icon, onStage)
     }
@@ -377,7 +393,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
         restore(id)
     }
 
-    fun restore(engineId: String) = runEngine(engineId, "Restore") { engine, target, onStage ->
+    fun restore(engineId: String) = runEngine(engineId, Action.Restore) { engine, target, onStage ->
         ApplyPipeline.restore(engine, target, onStage)
     }
 
@@ -400,7 +416,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun runEngine(
         engineId: String,
-        action: String,
+        action: Action,
         block: suspend (IconApplyEngine, AppTarget, (ApplyStage) -> Unit) -> ApplyResult,
     ) {
         val engine = container.engines.byId(engineId) ?: return
@@ -409,15 +425,20 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            updateEngine(engineId) { it.copy(busy = true, stage = null, lastResult = null) }
+            updateEngine(engineId) {
+                it.copy(busy = true, stage = null, lastResult = null, lastAction = action, lastOutcome = null, lastReason = null)
+            }
             log("[${engine.displayName}] $action ${target.packageName} …")
             val result = block(engine, target) { stage ->
                 log("[${engine.displayName}] $stage")
                 updateEngine(engineId) { it.copy(stage = stage) }
             }
-            val text = describe(action, result)
+            val text = describe(action.name, result)
             log("[${engine.displayName}] $text")
-            updateEngine(engineId) { it.copy(busy = false, stage = null, lastResult = text) }
+            val (outcome, reason) = outcomeOf(result)
+            updateEngine(engineId) {
+                it.copy(busy = false, stage = null, lastResult = text, lastOutcome = outcome, lastReason = reason)
+            }
             refreshEngines()
             refreshTargetPreview()
         }
