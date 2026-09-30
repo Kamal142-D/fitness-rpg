@@ -237,6 +237,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     // --- Icon packs -----------------------------------------------------------------------------
 
     private var searchJob: Job? = null
+    private var countJob: Job? = null
 
     private fun refreshIconPackSummary() {
         val packs = container.iconPacks.detectPacks()
@@ -247,15 +248,19 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openIconPacks() {
         _state.update { it.copy(picker = PickerState(open = true, loadingPacks = true)) }
-        viewModelScope.launch(Dispatchers.IO) {
+        countJob?.cancel()
+        countJob = viewModelScope.launch(Dispatchers.IO) {
             val repo = container.iconPacks
             val packs = repo.detectPacks().map { PackUi(it, repo.appIcon(it.packageName)?.asImageBitmap()) }
             updatePicker { it.copy(loadingPacks = false, packs = packs) }
-            // Index in the background so the list can show icon counts.
+            // Count icons in the background. Loads are shared per pack, so opening a pack while
+            // this runs waits for the same parse instead of starting a second one.
             for (pack in packs) {
                 if (pack.info.iconCount != null) continue
                 val updated = try {
-                    pack.copy(info = pack.info.copy(iconCount = repo.loadIndex(pack.info.packageName).entries.size))
+                    pack.copy(info = pack.info.copy(iconCount = repo.loadIndex(pack.info.packageName).index.entries.size))
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     pack.copy(error = e.message ?: "This icon pack could not be read.")
                 }
@@ -268,6 +273,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeIconPacks() {
         searchJob?.cancel()
+        countJob?.cancel()
         updatePicker { PickerState() }
     }
 
@@ -277,18 +283,34 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectPack(pack: PackUi) {
-        updatePicker { it.copy(selected = pack, loadingIndex = true, error = null, query = "") }
+        updatePicker { it.copy(selected = pack, loadingIndex = true, error = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val index = container.iconPacks.loadIndex(pack.info.packageName)
+                val load = container.iconPacks.loadIndex(pack.info.packageName)
+                val index = load.index
                 val target = _state.value.target
                 val recommended = target?.let {
                     IconMatcher.recommend(index, it.packageName, it.activityName, it.label)
                 }.orEmpty()
+                // Honour anything typed while the pack was loading.
+                val query = _state.value.picker.query
+                val results = if (query.isBlank()) index.entries else IconMatcher.search(index, query)
                 updatePicker {
-                    it.copy(loadingIndex = false, recommended = recommended, results = index.entries, total = index.entries.size)
+                    if (it.selected?.info?.packageName != pack.info.packageName) {
+                        it
+                    } else {
+                        it.copy(
+                            loadingIndex = false,
+                            recommended = recommended,
+                            results = if (it.query == query) results else IconMatcher.search(index, it.query),
+                            total = index.entries.size,
+                        )
+                    }
                 }
-                log("Icon pack ${pack.info.label}: ${index.entries.size} icons, ${index.componentToDrawables.size} mapped components, ${recommended.size} recommended")
+                log(
+                    "Icon pack ${pack.info.label}: ${index.entries.size} icons, ${index.componentToDrawables.size} mapped " +
+                        "components, ${recommended.size} recommended — loaded in ${load.millis} ms (${load.source})",
+                )
             } catch (e: Exception) {
                 val msg = e.message ?: "This icon pack could not be read."
                 updatePicker { it.copy(loadingIndex = false, error = msg) }

@@ -36,9 +36,11 @@ class IconPackIndexBuilder(private val packPackage: String) {
     }
 
     companion object {
+        private val WHITESPACE = Regex("\\s+")
+
         /** `whatsapp_alt_03` -> "Whatsapp alt 03". */
         fun labelFor(drawableName: String): String =
-            drawableName.replace('_', ' ').replace(Regex("\\s+"), " ").trim()
+            WHITESPACE.replace(drawableName.replace('_', ' '), " ").trim()
                 .replaceFirstChar { it.uppercaseChar() }
     }
 }

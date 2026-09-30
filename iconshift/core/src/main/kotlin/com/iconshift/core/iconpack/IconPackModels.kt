@@ -14,7 +14,7 @@ data class IconEntry(
     val mappedComponents: List<String>,
 )
 
-/** Parsed contents of one pack: every usable drawable plus the component -> drawable mapping. */
+/** Parsed contents of one pack: every drawable name plus the component -> drawable mapping. */
 class IconPackIndex(
     val packPackage: String,
     val entries: List<IconEntry>,
@@ -27,6 +27,25 @@ class IconPackIndex(
 
     val mappedPackages: Set<String> by lazy {
         componentToDrawables.keys.map { it.substringBefore('/') }.toSet()
+    }
+
+    /** [IconMatcher.normalize]d drawable names, parallel to [entries]. Computed once per index. */
+    val normalizedNames: List<String> by lazy { entries.map { IconMatcher.normalize(it.drawableName) } }
+
+    /** Search keys parallel to [entries]: normalised name plus mapped package names. */
+    val searchKeys: List<String> by lazy {
+        entries.mapIndexed { i, e ->
+            if (e.mappedComponents.isEmpty()) {
+                normalizedNames[i]
+            } else {
+                normalizedNames[i] + "|" + e.mappedComponents.joinToString("|") { IconMatcher.normalize(it.substringBefore('/')) }
+            }
+        }
+    }
+
+    /** Word tokens of each drawable name (3+ chars), parallel to [entries]; used for fuzzy matching. */
+    val nameTokens: List<List<String>> by lazy {
+        entries.map { e -> IconMatcher.tokens(e.drawableName).filter { it.length >= 3 } }
     }
 }
 

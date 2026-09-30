@@ -58,4 +58,30 @@ class IconPackTest {
         assertEquals(listOf("instagram"), IconMatcher.search(index, "instagram.android").map { it.drawableName })
         assertEquals(index.entries.size, IconMatcher.search(index, "  ").size)
     }
+
+    @Test
+    fun `codec round-trips entries, order and mappings`() {
+        val index = sampleIndex()
+        val decoded = IconPackIndexCodec.decode(index.packPackage, IconPackIndexCodec.encode(index))!!
+        assertEquals(index.entries, decoded.entries)
+        assertEquals(index.componentToDrawables, decoded.componentToDrawables)
+        assertNull(IconPackIndexCodec.decode("x", "not a cache file"))
+    }
+
+    @Test
+    fun `recommend and search stay fast on a 30k-icon pack`() {
+        val builder = IconPackIndexBuilder("com.big.pack")
+        for (i in 0 until 30_000) {
+            builder.onAppFilterItem("ComponentInfo{com.app$i/com.app$i.Main}", "icon_app_$i")
+            builder.onDrawableItem("alt_style_${i}_variant")
+        }
+        builder.onAppFilterItem("ComponentInfo{com.whatsapp/com.whatsapp.Main}", "whatsapp")
+        val index = builder.build()
+        val start = System.nanoTime()
+        val rec = IconMatcher.recommend(index, "com.whatsapp", "com.whatsapp.Main", "WhatsApp")
+        repeat(10) { IconMatcher.search(index, "app1$it") }
+        val ms = (System.nanoTime() - start) / 1_000_000
+        assertEquals("whatsapp", rec.first().drawableName)
+        assertTrue("took ${ms}ms", ms < 3_000)
+    }
 }

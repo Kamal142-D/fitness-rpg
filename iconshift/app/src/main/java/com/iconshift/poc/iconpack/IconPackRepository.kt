@@ -12,13 +12,20 @@ import androidx.core.graphics.drawable.toBitmap
 import com.iconshift.core.applyengine.IconSource
 import com.iconshift.core.iconpack.IconPackIndex
 import com.iconshift.core.iconpack.IconPackIndexBuilder
+import com.iconshift.core.iconpack.IconPackIndexCodec
 import com.iconshift.core.iconpack.IconPackInfo
 import org.xmlpull.v1.XmlPullParser
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class IconPackReadException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/** A loaded index plus how it was obtained, for the diagnostics log. */
+data class IndexLoad(val index: IconPackIndex, val millis: Long, val source: String)
 
 /**
  * Discovers icon packs installed on the phone and reads their icons in place. Nothing is copied
@@ -29,7 +36,10 @@ class IconPackRepository(private val context: Context) {
     private val pm = context.packageManager
     private val resources = ConcurrentHashMap<String, Resources>()
     private val indexes = ConcurrentHashMap<String, IconPackIndex>()
-    private val resIds = ConcurrentHashMap<String, Map<String, Int>>()
+    /** Drawable ids resolved lazily per visible cell (getIdentifier is slow; never done for a whole pack). */
+    private val resIds = ConcurrentHashMap<String, ConcurrentHashMap<String, Int>>()
+    private val loadLocks = ConcurrentHashMap<String, Mutex>()
+    private val cacheDir = File(context.filesDir, "iconpack-index")
 
     private val thumbnails = object : LruCache<String, Bitmap>(
         (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt(),
@@ -62,9 +72,33 @@ class IconPackRepository(private val context: Context) {
 
     fun cachedIndex(pkg: String): IconPackIndex? = indexes[pkg]
 
-    /** Parses appfilter.xml + drawable.xml once per pack. Throws [IconPackReadException]. */
-    fun loadIndex(pkg: String): IconPackIndex {
-        indexes[pkg]?.let { return it }
+    /**
+     * Index for [pkg]: memory, then the on-disk cache for this installed version, then a fresh
+     * parse of appfilter.xml + drawable.xml. Concurrent callers share one load.
+     * Throws [IconPackReadException].
+     */
+    suspend fun loadIndex(pkg: String): IndexLoad {
+        val start = System.nanoTime()
+        fun elapsed() = (System.nanoTime() - start) / 1_000_000
+        indexes[pkg]?.let { return IndexLoad(it, elapsed(), "memory") }
+        return loadLocks.getOrPut(pkg) { Mutex() }.withLock {
+            indexes[pkg]?.let { return@withLock IndexLoad(it, elapsed(), "memory") }
+            val cacheFile = cacheFileFor(pkg)
+            val cached = cacheFile?.takeIf { it.isFile }
+                ?.let { f -> runCatching { IconPackIndexCodec.decode(pkg, f.readText()) }.getOrNull() }
+            val (index, source) = if (cached != null && cached.entries.isNotEmpty()) {
+                cached to "disk cache"
+            } else {
+                val parsed = parse(pkg)
+                if (cacheFile != null) writeCache(pkg, cacheFile, parsed)
+                parsed to "parsed"
+            }
+            indexes[pkg] = index
+            IndexLoad(index, elapsed(), source)
+        }
+    }
+
+    private fun parse(pkg: String): IconPackIndex {
         val res = resourcesFor(pkg)
         val builder = IconPackIndexBuilder(pkg)
         val hasAppFilter = readXml(pkg, res, "appfilter") { p ->
@@ -76,17 +110,24 @@ class IconPackRepository(private val context: Context) {
         if (!hasAppFilter && !hasDrawables) {
             throw IconPackReadException("This icon pack could not be read (no appfilter.xml or drawable.xml).")
         }
-        val ids = HashMap<String, Int>()
-        val index = builder.build { name ->
-            @Suppress("DiscouragedApi")
-            val id = res.getIdentifier(name, "drawable", pkg)
-            if (id != 0) ids[name] = id
-            id != 0
-        }
-        if (index.entries.isEmpty()) throw IconPackReadException("This icon pack could not be read (no usable icons).")
-        resIds[pkg] = ids
-        indexes[pkg] = index
+        val index = builder.build()
+        if (index.entries.isEmpty()) throw IconPackReadException("This icon pack could not be read (no icons listed).")
         return index
+    }
+
+    /** `<pkg>-<lastUpdateTime>.tsv`: a pack update changes the name, so stale caches are never read. */
+    private fun cacheFileFor(pkg: String): File? = runCatching {
+        File(cacheDir, "$pkg-${pm.getPackageInfo(pkg, 0).lastUpdateTime}.tsv")
+    }.getOrNull()
+
+    private fun writeCache(pkg: String, file: File, index: IconPackIndex) {
+        runCatching {
+            cacheDir.mkdirs()
+            cacheDir.listFiles { f -> f.name.startsWith("$pkg-") }?.forEach { it.delete() }
+            val tmp = File(cacheDir, file.name + ".tmp")
+            tmp.writeText(IconPackIndexCodec.encode(index))
+            tmp.renameTo(file)
+        }
     }
 
     /** Small, cached preview. Decoded lazily per grid cell, never for the whole pack. */
@@ -108,8 +149,9 @@ class IconPackRepository(private val context: Context) {
 
     private fun render(pkg: String, drawableName: String, sizePx: Int, density: Int): Bitmap? = runCatching {
         val res = resourcesFor(pkg)
+        val ids = resIds.getOrPut(pkg) { ConcurrentHashMap() }
         @Suppress("DiscouragedApi")
-        val id = resIds[pkg]?.get(drawableName) ?: res.getIdentifier(drawableName, "drawable", pkg)
+        val id = ids.getOrPut(drawableName) { res.getIdentifier(drawableName, "drawable", pkg) }
         if (id == 0) return null
         res.getDrawableForDensity(id, density, null)?.toBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     }.getOrNull()
