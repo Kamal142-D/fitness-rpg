@@ -138,6 +138,9 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                 }
             }
             item {
+                ApplyCard(state, vm)
+            }
+            item {
                 Text("Automatic engine: ${state.automaticEngine}", style = MaterialTheme.typography.bodyMedium)
             }
             items(state.engines, key = { it.id }) { engine ->
@@ -178,6 +181,58 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
 
     if (pickingApp) {
         AppPickerDialog(state.apps, onPick = { vm.selectTarget(it); pickingApp = false }, onDismiss = { pickingApp = false })
+    }
+}
+
+/** The main action: target -> chosen icon, one tap to apply with the best usable engine. */
+@Composable
+private fun ApplyCard(state: PocState, vm: PocViewModel) {
+    val engine = state.engines.firstOrNull { it.id == state.automaticEngineId }
+    val busy = engine?.busy == true
+    Section("Apply") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBox(state.target?.icon, 56)
+            Text("  →  ", style = MaterialTheme.typography.titleLarge)
+            IconBox(state.iconPreview, 56)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(state.target?.label ?: "Choose a target app", fontWeight = FontWeight.SemiBold)
+                Text(state.icon?.label ?: "-", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        when {
+            state.shizuku != ShizukuGate.Status.Ready -> Text(
+                "Start Shizuku and tap \"Grant access\" in the Shizuku card first.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            engine == null -> Text(
+                "No working apply method on this device yet: ${state.automaticEngine}",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            else -> Text("Method: ${engine.name}", style = MaterialTheme.typography.bodySmall)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = vm::applyAutomatic,
+                enabled = engine != null && !busy && state.target != null && state.icon != null,
+            ) { Text("Apply icon") }
+            TextButton(onClick = vm::restoreAutomatic, enabled = engine != null && !busy) { Text("Restore original") }
+        }
+        if (busy) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(engine?.stage?.let(::stageText) ?: "Working…")
+            }
+        }
+        engine?.lastResult?.let { Mono(it) }
+        Text(
+            "Then check the home screen and dock, and record Pass/Fail in the method's card below. " +
+                "To try a specific method, use the engine cards below.",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

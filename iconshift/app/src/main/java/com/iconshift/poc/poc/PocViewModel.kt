@@ -108,6 +108,8 @@ data class PocState(
     val iconPreview: ImageBitmap? = null,
     val engines: List<EngineUi> = emptyList(),
     val automaticEngine: String = "",
+    /** Engine the one-tap "Apply icon" button uses; null when none is usable right now. */
+    val automaticEngineId: String? = null,
     val log: List<String> = emptyList(),
     val diagnosticsBusy: Boolean = false,
     val picker: PickerState = PickerState(),
@@ -181,6 +183,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
                     (previous[e.id] ?: EngineUi(e.id, e.displayName)).copy(compatibility = compat)
                 },
                 automaticEngine = automaticText,
+                automaticEngineId = automatic.id.takeIf { it != "unsupported" },
             )
         }
     }
@@ -343,6 +346,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 setIcon(container.iconPacks.iconSource(pkg, entry.drawableName))
                 closeIconPacks()
+                log("Icon selected — tap \"Apply icon\" to put it on the launcher")
             } catch (e: Exception) {
                 val msg = e.message ?: "This icon is no longer available."
                 updatePicker { it.copy(error = msg) }
@@ -360,6 +364,17 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     fun apply(engineId: String) = runEngine(engineId, "Apply") { engine, target, onStage ->
         val icon = _state.value.icon ?: return@runEngine ApplyResult.Failed("No icon selected")
         ApplyPipeline.apply(engine, target, icon, onStage)
+    }
+
+    /** One-tap apply with the best usable engine (the same engine card shows progress and result). */
+    fun applyAutomatic() {
+        val id = _state.value.automaticEngineId ?: return log("No usable apply method yet: ${_state.value.automaticEngine}")
+        apply(id)
+    }
+
+    fun restoreAutomatic() {
+        val id = _state.value.automaticEngineId ?: return log("No usable apply method yet: ${_state.value.automaticEngine}")
+        restore(id)
     }
 
     fun restore(engineId: String) = runEngine(engineId, "Restore") { engine, target, onStage ->
