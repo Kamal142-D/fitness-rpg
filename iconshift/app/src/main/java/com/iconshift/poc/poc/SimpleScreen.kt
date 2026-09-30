@@ -55,7 +55,7 @@ fun SimpleScreen(
     val engine = state.engines.firstOrNull { it.id == state.automaticEngineId }
     val busy = engine?.busy == true
     val shizukuReady = state.shizuku == ShizukuGate.Status.Ready
-    val checked = state.engines.isNotEmpty()
+    val checked = state.enginesChecked
     // Only ask for Shizuku when no method works without it (e.g. ThemeManager's apply screen is locked).
     val needsSetup = checked && engine == null && !shizukuReady
 
@@ -111,6 +111,13 @@ fun SimpleScreen(
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.simple_restore)) }
 
+        if (!checked) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.simple_checking), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         if (checked && engine == null && shizukuReady) {
             Text(stringResource(R.string.simple_no_method), color = MaterialTheme.colorScheme.error)
         }

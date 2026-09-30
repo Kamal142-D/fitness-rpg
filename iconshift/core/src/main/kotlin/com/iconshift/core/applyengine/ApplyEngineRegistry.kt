@@ -18,8 +18,10 @@ class ApplyEngineRegistry(private val engines: List<IconApplyEngine>) {
         .sortedWith(compareBy<Ranked> { it.compatibility.level.ordinal }.thenBy { it.compatibility.missingRequirements.size })
 
     /** The engine "Automatic" mode would use: best usable one, else an [UnsupportedApplyEngine] explaining why. */
-    suspend fun automatic(): IconApplyEngine {
-        val ranked = rank()
+    suspend fun automatic(): IconApplyEngine = automatic(rank())
+
+    /** Same as [automatic], reusing a ranking the caller already has (compatibility checks can be slow). */
+    fun automatic(ranked: List<Ranked>): IconApplyEngine {
         ranked.firstOrNull { it.compatibility.isUsable }?.let { return it.engine }
         val why = ranked.joinToString("; ") { r ->
             "${r.engine.displayName}: " + (r.compatibility.reasons + r.compatibility.missingRequirements.map { it.description })

@@ -22,6 +22,7 @@
 
     <string name="simple_apply">غيّر الأيقونة</string>
     <string name="simple_restore">رجّع الأصلية</string>
+    <string name="simple_checking">بيشوف إيه اللي بيشتغل على الموبايل ده…</string>
     <string name="simple_no_method">تغيير الأيقونات مش متاح على الموبايل ده لسه.</string>
 
     <string name="simple_stage_preparing">بيجهّز…</string>

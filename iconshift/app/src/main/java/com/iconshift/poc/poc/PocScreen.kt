@@ -218,6 +218,7 @@ private fun ApplyCard(state: PocState, vm: PocViewModel) {
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
             )
+            !state.enginesChecked -> Text("Checking what works on this phone…", style = MaterialTheme.typography.bodySmall)
             engine == null -> Text(
                 "No working apply method on this device yet: ${state.automaticEngine}",
                 color = MaterialTheme.colorScheme.error,

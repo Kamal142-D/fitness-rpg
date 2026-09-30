@@ -88,7 +88,9 @@ class HyperOsThemeApplyEngine(
         }
         val reasons = mutableListOf("${env.osDescription}: theme icons via $component (unconfirmed on this device)")
         var level = SupportLevel.Experimental
-        if (missing.isEmpty() && (iconsPaths + fallbackBasePaths).none { host.fileStamp(it) != null }) {
+        // Only probed in direct mode: it's a cheap local file check there, while with the shell it
+        // would have to start the Shizuku service just to render the engine list.
+        if (direct && missing.isEmpty() && (iconsPaths + fallbackBasePaths).none { host.fileStamp(it) != null }) {
             if (direct) {
                 // Without a readable base, applying would drop every other app's theme icon. Don't risk it.
                 return CompatibilityResult(

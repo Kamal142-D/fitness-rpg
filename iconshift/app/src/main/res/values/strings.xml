@@ -25,6 +25,7 @@
 
     <string name="simple_apply">Apply icon</string>
     <string name="simple_restore">Restore original</string>
+    <string name="simple_checking">Checking what works on this phone…</string>
     <string name="simple_no_method">Changing icons isn\'t available on this phone yet.</string>
 
     <string name="simple_stage_preparing">Getting ready…</string>

@@ -126,6 +126,8 @@ data class PocState(
     val automaticEngine: String = "",
     /** Engine the one-tap "Apply icon" button uses; null when none is usable right now. */
     val automaticEngineId: String? = null,
+    /** False until the first compatibility check finished (UI shows "Checking…" instead of "nothing works"). */
+    val enginesChecked: Boolean = false,
     /** Engine of the last Apply/Restore; its result stays visible even if Automatic switches engines. */
     val lastRunEngineId: String? = null,
     val log: List<String> = emptyList(),
@@ -139,7 +141,12 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(PocState())
     val state: StateFlow<PocState> = _state.asStateFlow()
 
+    private var lastEngineSummary = ""
+
     init {
+        // Show the methods right away; compatibility fills in when the checks finish.
+        _state.update { s -> s.copy(engines = container.engines.all.map { EngineUi(it.id, it.displayName) }) }
+        container.shizuku.onEvent = { log(it) }
         setIcon(TestIcons.generated())
         // Shizuku starting or granting permission changes which engines are usable.
         viewModelScope.launch(Dispatchers.IO) {
@@ -156,6 +163,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     /** "Re-run checks": also forgets a remembered no-Shizuku block so it gets tried again. */
     fun rerunChecks() {
         container.clearDirectBlock()
+        container.shizuku.resetBindCooldown()
         log("Checks re-run; the no-Shizuku method will be tried again")
         refreshAll()
     }
@@ -195,7 +203,15 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun refreshEngines() {
         val ranked = container.engines.rank()
         val previous = _state.value.engines.associateBy { it.id }
-        val automatic = container.engines.automatic()
+        val automatic = container.engines.automatic(ranked)
+        val summary = "Methods: " + ranked.joinToString { r ->
+            "${r.engine.id}=${r.compatibility.level}" +
+                if (r.compatibility.missingRequirements.isNotEmpty()) " (needs setup)" else ""
+        } + " → automatic: ${automatic.id}"
+        if (summary != lastEngineSummary) {
+            lastEngineSummary = summary
+            log(summary)
+        }
         val automaticText = if (automatic.id == "unsupported") {
             "None usable: " + automatic.checkCompatibility().reasons.joinToString("; ")
         } else {
@@ -209,6 +225,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
                 },
                 automaticEngine = automaticText,
                 automaticEngineId = automatic.id.takeIf { it != "unsupported" },
+                enginesChecked = true,
             )
         }
     }
@@ -393,6 +410,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
 
     /** One-tap apply with the best usable engine (the same engine card shows progress and result). */
     fun applyAutomatic() {
+        container.shizuku.resetBindCooldown()
         val id = _state.value.automaticEngineId ?: return log("No usable apply method yet: ${_state.value.automaticEngine}")
         apply(id)
     }

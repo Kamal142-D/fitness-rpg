@@ -146,9 +146,11 @@ class HyperOsThemeApplyEngineTest {
     }
 
     @Test
-    fun `unreadable theme icons downgrade to limited`() = runTest {
-        val shell = FakeShell(iconsPath) // nothing at the icons path
-        assertEquals(SupportLevel.Limited, engine(shell).checkCompatibility().level)
+    fun `shell mode compatibility check runs no shell commands`() = runTest {
+        // Checking compatibility must not start the Shizuku service (it made the engine list hang).
+        val shell = FakeShell(iconsPath)
+        assertEquals(SupportLevel.Experimental, engine(shell).checkCompatibility().level)
+        assertTrue(shell.commands.isEmpty())
     }
 
     @Test

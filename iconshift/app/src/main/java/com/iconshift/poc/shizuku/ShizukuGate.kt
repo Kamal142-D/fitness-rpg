@@ -29,6 +29,14 @@ class ShizukuGate(private val context: Context) : ShellAccess {
 
     @Volatile
     private var service: IPrivilegedService? = null
+
+    /** Receives connection events for the diagnostics log. */
+    @Volatile
+    var onEvent: (String) -> Unit = {}
+
+    /** Last failed bind, so callers don't each wait out another timeout right after a failure. */
+    @Volatile
+    private var lastBindFailureAt = 0L
     private val bindLock = Mutex()
 
     private val args = Shizuku.UserServiceArgs(ComponentName(BuildConfig.APPLICATION_ID, PrivilegedService::class.java.name))
@@ -48,6 +56,11 @@ class ShizukuGate(private val context: Context) : ShellAccess {
 
     fun refresh() {
         _status.value = computeStatus()
+    }
+
+    /** Allow an immediate new connection attempt (e.g. user tapped Apply or Re-run checks). */
+    fun resetBindCooldown() {
+        lastBindFailureAt = 0L
     }
 
     fun requestPermission() {
@@ -73,7 +86,19 @@ class ShizukuGate(private val context: Context) : ShellAccess {
         if (computeStatus() != Status.Ready) return null
         service?.takeIf { it.asBinder().pingBinder() }?.let { return it }
         return bindLock.withLock {
-            service?.takeIf { it.asBinder().pingBinder() } ?: bind()
+            service?.takeIf { it.asBinder().pingBinder() }?.let { return@withLock it }
+            if (System.currentTimeMillis() - lastBindFailureAt < BIND_COOLDOWN_MS) return@withLock null
+            onEvent("Connecting to IconShift's Shizuku service…")
+            val started = System.currentTimeMillis()
+            val s = bind()
+            if (s == null) {
+                lastBindFailureAt = System.currentTimeMillis()
+                onEvent("Shizuku service did not start within ${BIND_TIMEOUT_MS / 1000}s")
+            } else {
+                val uid = runCatching { s.uid() }.getOrNull()
+                onEvent("Shizuku service connected in ${System.currentTimeMillis() - started} ms (uid $uid)")
+            }
+            s
         }
     }
 
@@ -93,6 +118,7 @@ class ShizukuGate(private val context: Context) : ShellAccess {
             try {
                 Shizuku.bindUserService(args, connection)
             } catch (e: Exception) {
+                onEvent("Shizuku bindUserService failed: $e")
                 if (cont.isActive) cont.resume(null)
             }
         }
@@ -115,6 +141,7 @@ class ShizukuGate(private val context: Context) : ShellAccess {
     companion object {
         const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         private const val PERMISSION_REQUEST_CODE = 4201
-        private const val BIND_TIMEOUT_MS = 10_000L
+        private const val BIND_TIMEOUT_MS = 8_000L
+        private const val BIND_COOLDOWN_MS = 20_000L
     }
 }
