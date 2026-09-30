@@ -2,6 +2,7 @@ package com.iconshift.poc.poc
 
 import android.app.Application
 import android.content.pm.LauncherApps
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Process
@@ -19,6 +20,9 @@ import com.iconshift.core.applyengine.IconApplyEngine
 import com.iconshift.core.applyengine.IconSource
 import com.iconshift.core.applyengine.Png
 import com.iconshift.core.applyengine.VerificationResult
+import com.iconshift.core.iconpack.IconEntry
+import com.iconshift.core.iconpack.IconMatcher
+import com.iconshift.core.iconpack.IconPackInfo
 import com.iconshift.core.miui.HyperOsThemeApplyEngine
 import com.iconshift.core.miui.MiuiIconsZip
 import com.iconshift.core.shell.PrivilegedShell
@@ -29,6 +33,7 @@ import com.iconshift.poc.applyengine.AppIcons
 import com.iconshift.poc.device.ThemeManagerProbe
 import com.iconshift.poc.shizuku.ShizukuGate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,9 +74,30 @@ data class EngineUi(
     val checks: Map<Check, Boolean> = emptyMap(),
 )
 
+data class PackUi(
+    val info: IconPackInfo,
+    val icon: ImageBitmap?,
+    val error: String? = null,
+)
+
+/** State of the "From icon pack" picker: pack list, then a searchable icon grid for one pack. */
+data class PickerState(
+    val open: Boolean = false,
+    val loadingPacks: Boolean = false,
+    val packs: List<PackUi> = emptyList(),
+    val selected: PackUi? = null,
+    val loadingIndex: Boolean = false,
+    val error: String? = null,
+    val query: String = "",
+    val recommended: List<IconEntry> = emptyList(),
+    val results: List<IconEntry> = emptyList(),
+    val total: Int = 0,
+)
+
 data class PocState(
     val deviceLines: List<String> = emptyList(),
     val themeLines: List<String> = emptyList(),
+    val iconPackSummary: String = "",
     val shizuku: ShizukuGate.Status = ShizukuGate.Status.NotInstalled,
     val shizukuDetail: String = "",
     val apps: List<AppEntry> = emptyList(),
@@ -83,6 +109,7 @@ data class PocState(
     val automaticEngine: String = "",
     val log: List<String> = emptyList(),
     val diagnosticsBusy: Boolean = false,
+    val picker: PickerState = PickerState(),
 )
 
 class PocViewModel(app: Application) : AndroidViewModel(app) {
@@ -115,6 +142,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             refreshShizuku()
+            refreshIconPackSummary()
             if (_state.value.apps.isEmpty()) loadApps()
             refreshEngines()
             refreshTargetPreview()
@@ -204,6 +232,102 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
         val bmp = BitmapFactory.decodeByteArray(icon.pngBytes, 0, icon.pngBytes.size)
         _state.update { it.copy(icon = icon, iconPreview = bmp?.asImageBitmap()) }
         log("Icon: ${icon.label} (${icon.origin}, ${icon.pngBytes.size} bytes, sha256 ${Png.sha256(icon.pngBytes).take(16)})")
+    }
+
+    // --- Icon packs -----------------------------------------------------------------------------
+
+    private var searchJob: Job? = null
+
+    private fun refreshIconPackSummary() {
+        val packs = container.iconPacks.detectPacks()
+        val summary = "Icon packs: ${packs.size} detected" +
+            if (packs.isNotEmpty()) " (${packs.joinToString { it.label }})" else ""
+        _state.update { it.copy(iconPackSummary = summary) }
+    }
+
+    fun openIconPacks() {
+        _state.update { it.copy(picker = PickerState(open = true, loadingPacks = true)) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = container.iconPacks
+            val packs = repo.detectPacks().map { PackUi(it, repo.appIcon(it.packageName)?.asImageBitmap()) }
+            updatePicker { it.copy(loadingPacks = false, packs = packs) }
+            // Index in the background so the list can show icon counts.
+            for (pack in packs) {
+                if (pack.info.iconCount != null) continue
+                val updated = try {
+                    pack.copy(info = pack.info.copy(iconCount = repo.loadIndex(pack.info.packageName).entries.size))
+                } catch (e: Exception) {
+                    pack.copy(error = e.message ?: "This icon pack could not be read.")
+                }
+                updatePicker { p ->
+                    p.copy(packs = p.packs.map { if (it.info.packageName == updated.info.packageName) updated else it })
+                }
+            }
+        }
+    }
+
+    fun closeIconPacks() {
+        searchJob?.cancel()
+        updatePicker { PickerState() }
+    }
+
+    fun backToPacks() {
+        searchJob?.cancel()
+        updatePicker { it.copy(selected = null, error = null, query = "", recommended = emptyList(), results = emptyList(), total = 0) }
+    }
+
+    fun selectPack(pack: PackUi) {
+        updatePicker { it.copy(selected = pack, loadingIndex = true, error = null, query = "") }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val index = container.iconPacks.loadIndex(pack.info.packageName)
+                val target = _state.value.target
+                val recommended = target?.let {
+                    IconMatcher.recommend(index, it.packageName, it.activityName, it.label)
+                }.orEmpty()
+                updatePicker {
+                    it.copy(loadingIndex = false, recommended = recommended, results = index.entries, total = index.entries.size)
+                }
+                log("Icon pack ${pack.info.label}: ${index.entries.size} icons, ${index.componentToDrawables.size} mapped components, ${recommended.size} recommended")
+            } catch (e: Exception) {
+                val msg = e.message ?: "This icon pack could not be read."
+                updatePicker { it.copy(loadingIndex = false, error = msg) }
+                log("Icon pack ${pack.info.packageName}: $msg")
+            }
+        }
+    }
+
+    fun searchIcons(query: String) {
+        updatePicker { it.copy(query = query) }
+        val pkg = _state.value.picker.selected?.info?.packageName ?: return
+        val index = container.iconPacks.cachedIndex(pkg) ?: return
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.Default) {
+            val results = IconMatcher.search(index, query)
+            updatePicker { if (it.query == query) it.copy(results = results) else it }
+        }
+    }
+
+    /** Thumbnail for a grid cell; call off the main thread. */
+    fun packThumbnail(pkg: String, drawableName: String, sizePx: Int): Bitmap? =
+        container.iconPacks.thumbnail(pkg, drawableName, sizePx)
+
+    fun useIconFromPack(entry: IconEntry) {
+        val pkg = _state.value.picker.selected?.info?.packageName ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                setIcon(container.iconPacks.iconSource(pkg, entry.drawableName))
+                closeIconPacks()
+            } catch (e: Exception) {
+                val msg = e.message ?: "This icon is no longer available."
+                updatePicker { it.copy(error = msg) }
+                log("Could not load ${entry.drawableName}: $msg")
+            }
+        }
+    }
+
+    private fun updatePicker(change: (PickerState) -> PickerState) {
+        _state.update { it.copy(picker = change(it.picker)) }
     }
 
     // --- Engine operations ---------------------------------------------------------------------
@@ -341,6 +465,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             appendLine()
             appendLine("== ThemeManager")
             s.themeLines.forEach { appendLine(it) }
+            appendLine(s.iconPackSummary)
             appendLine()
             appendLine("== Shizuku: ${s.shizuku} ${s.shizukuDetail}")
             appendLine("== Automatic engine: ${s.automaticEngine}")

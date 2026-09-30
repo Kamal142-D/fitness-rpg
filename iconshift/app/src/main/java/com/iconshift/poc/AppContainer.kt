@@ -8,6 +8,7 @@ import com.iconshift.poc.applyengine.FabricatedOverlayApplyEngine
 import com.iconshift.poc.applyengine.FileEngineStateStore
 import com.iconshift.poc.device.DeviceInfo
 import com.iconshift.poc.device.ThemeManagerProbe
+import com.iconshift.poc.iconpack.IconPackRepository
 import com.iconshift.poc.shizuku.ShizukuGate
 import java.io.File
 
@@ -16,6 +17,7 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
     val shizuku = ShizukuGate(appContext)
+    val iconPacks = IconPackRepository(appContext)
     private val store = FileEngineStateStore(File(appContext.filesDir, "engine-state"))
 
     @Volatile

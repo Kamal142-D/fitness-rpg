@@ -79,6 +79,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                     state.deviceLines.forEach { Mono(it) }
                     Spacer(Modifier.padding(4.dp))
                     state.themeLines.forEach { Mono(it) }
+                    if (state.iconPackSummary.isNotBlank()) Mono(state.iconPackSummary)
                     TextButton(onClick = vm::refreshAll) { Text("Re-run checks") }
                 }
             }
@@ -125,6 +126,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(state.icon?.label ?: "-")
+                            Button(onClick = vm::openIconPacks) { Text("From icon pack") }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = vm::useGeneratedIcon) { Text("Test icon") }
                                 OutlinedButton(onClick = {
@@ -168,6 +170,10 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                 }
             }
         }
+    }
+
+    if (state.picker.open) {
+        IconPackPickerDialog(state.picker, state.target?.label, vm)
     }
 
     if (pickingApp) {
