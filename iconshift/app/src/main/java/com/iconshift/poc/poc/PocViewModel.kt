@@ -30,6 +30,7 @@ import com.iconshift.core.shell.Shell
 import com.iconshift.poc.BuildConfig
 import com.iconshift.poc.IconShiftApp
 import com.iconshift.poc.applyengine.AppIcons
+import com.iconshift.poc.device.DeepProbe
 import com.iconshift.poc.device.ThemeManagerProbe
 import com.iconshift.poc.shizuku.ShizukuGate
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,8 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
             if (_state.value.apps.isEmpty()) loadApps()
             refreshEngines()
             refreshTargetPreview()
+            // A theme apply that couldn't be confirmed: collect the facts right away for the report.
+            if (engineId.startsWith("hyperos-theme") && result is ApplyResult.AppliedUnverified) runDeepProbe()
         }
     }
 
@@ -516,6 +519,19 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     fun dumpOverlays() = diagnostic("Overlay state") { shell ->
         val pkg = _state.value.target?.packageName ?: return@diagnostic "No target"
         shell.exec("cmd overlay list ${Shell.quote(pkg)} 2>&1").let { it.stdout.trim().ifEmpty { it.summary() } }
+    }
+
+    /** Everything needed to see why ThemeManager ignored an apply (see [DeepProbe]). */
+    fun deepProbe() {
+        viewModelScope.launch(Dispatchers.IO) { runDeepProbe() }
+    }
+
+    private suspend fun runDeepProbe() {
+        _state.update { it.copy(diagnosticsBusy = true) }
+        log("[Deep probe] running…")
+        val out = runCatching { DeepProbe.run(getApplication(), container.shizuku.shell()) }.getOrElse { "failed: $it" }
+        log("[Deep probe]\n$out")
+        _state.update { it.copy(diagnosticsBusy = false) }
     }
 
     fun dumpThemeManager() = diagnostic("ThemeManager components") { shell ->

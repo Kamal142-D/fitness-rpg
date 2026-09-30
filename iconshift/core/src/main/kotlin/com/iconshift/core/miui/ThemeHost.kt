@@ -65,6 +65,9 @@ class ShellThemeHost(
                 "-e theme_file_path ${Shell.quote(mtzPath)} -e api_called_from test",
         )
         val refused = !result.ok || result.stdout.contains("Error") || result.stderr.contains("Error")
-        return HostResult(!refused, "am: ${result.summary()}")
+        // "TotalTime: 0" with an unknown launch state: the activity finished at once (likely rejected the request).
+        val returnedImmediately = result.stdout.contains("TotalTime: 0") && result.stdout.contains("LaunchState: UNKNOWN")
+        val note = if (returnedImmediately) "\nThemeManager returned immediately (likely rejected the request)" else ""
+        return HostResult(!refused, "am: ${result.summary()}$note")
     }
 }

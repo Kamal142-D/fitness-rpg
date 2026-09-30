@@ -174,6 +174,7 @@ fun PocScreen(vm: PocViewModel = viewModel()) {
                         OutlinedButton(onClick = vm::dumpThemeManager, enabled = !state.diagnosticsBusy) { Text("ThemeManager") }
                         OutlinedButton(onClick = vm::restartLauncher, enabled = !state.diagnosticsBusy) { Text("Restart launcher") }
                     }
+                    OutlinedButton(onClick = vm::deepProbe, enabled = !state.diagnosticsBusy) { Text("Deep probe (why nothing changed)") }
                     Button(onClick = { shareReport(context, vm) }) { Text("Export report") }
                 }
             }
