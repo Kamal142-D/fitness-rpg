@@ -21,8 +21,16 @@ once a physical-device run shows a mechanism passing every check below.
 
 ## Build
 
-CI (`.github/workflows/iconshift-android.yml`) runs `:core:test` and `:app:assembleDebug`, then
-uploads **`iconshift-poc-debug-apk`** as an artifact. Download it from the workflow run.
+CI (`.github/workflows/iconshift-android.yml`) runs `:core:test` and `:app:assembleDebug` on every
+push. It publishes the APK in two places:
+
+- **Direct download:** open
+  <https://github.com/Kamal142-D/fitness-rpg/releases/download/iconshift-poc/iconshift-poc.apk>
+  on the phone. This is a rolling *pre-release* that always holds the latest build. It is
+  deliberately a pre-release so the Fitness RPG in-app updater, which reads `/releases/latest`,
+  never picks it up.
+- **Fallback:** the `iconshift-poc-debug-apk` artifact on the workflow run. It needs a GitHub
+  login and downloads as a zip.
 
 Locally, with an Android SDK:
 

@@ -14,6 +14,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: iconshift
@@ -38,6 +40,37 @@ jobs:
           name: iconshift-poc-debug-apk
           path: iconshift/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Direct .apk download for phones: a rolling "iconshift-poc" PRE-release.
+      # It must stay a prerelease: the Fitness RPG in-app updater reads /releases/latest,
+      # which skips prereleases, so this never shows up as a Fitness RPG update.
+      - name: Reset rolling POC release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete iconshift-poc --cleanup-tag --yes --repo "${{ github.repository }}" || true
+
+      - name: Stage APK for release
+        if: github.event_name == 'push'
+        run: cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/iconshift-poc.apk"
+
+      - name: Publish POC APK as prerelease
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: iconshift-poc
+          target_commitish: ${{ github.sha }}
+          name: IconShift POC (HyperOS test build)
+          prerelease: true
+          make_latest: false
+          files: iconshift-poc.apk
+          body: |
+            IconShift Phase 1 proof-of-concept test build from ${{ github.ref_name }} @ ${{ github.sha }}.
+
+            Install: open iconshift-poc.apk on the phone and allow "Install unknown apps" when asked.
+            Then follow the device test protocol in iconshift/README.md (needs Shizuku).
+
+            This is a test build, not a Fitness RPG release.
 
       - name: Upload test reports
         if: failure()
