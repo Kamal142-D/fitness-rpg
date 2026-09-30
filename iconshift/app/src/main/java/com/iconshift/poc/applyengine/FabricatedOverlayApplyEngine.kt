@@ -14,7 +14,6 @@ import com.iconshift.core.applyengine.SupportLevel
 import com.iconshift.core.applyengine.VerificationResult
 import com.iconshift.core.shell.Shell
 import com.iconshift.poc.shizuku.ShizukuGate
-import com.iconshift.poc.shizuku.ShizukuShell
 import com.iconshift.poc.shizuku.withPipe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,7 +50,7 @@ class FabricatedOverlayApplyEngine(
     override suspend fun apply(target: AppTarget, icon: IconSource, onStage: (ApplyStage) -> Unit): ApplyResult {
         onStage(ApplyStage.Preparing)
         if (!Shell.isValidPackage(target.packageName)) return ApplyResult.Failed("Invalid package name")
-        val service = gate.service() ?: return ApplyResult.Failed("Privileged shell unavailable")
+        val service = gate.service() ?: return ApplyResult.Failed(HELPER_UNAVAILABLE)
         val resources = withContext(Dispatchers.IO) {
             runCatching { AppIcons.iconResourceNames(context, target) }.getOrDefault(emptyList())
         }
@@ -79,7 +78,7 @@ class FabricatedOverlayApplyEngine(
     override suspend fun restore(target: AppTarget, onStage: (ApplyStage) -> Unit): ApplyResult {
         onStage(ApplyStage.Preparing)
         if (!Shell.isValidPackage(target.packageName)) return ApplyResult.Failed("Invalid package name")
-        val service = gate.service() ?: return ApplyResult.Failed("Privileged shell unavailable")
+        val service = gate.service() ?: return ApplyResult.Failed(HELPER_UNAVAILABLE)
         if (overlayState(target) == OverlayState.Absent) {
             return ApplyResult.AppliedUnverified(id, "No IconShift overlay registered for ${target.packageName}")
         }
@@ -111,7 +110,7 @@ class FabricatedOverlayApplyEngine(
     private enum class OverlayState { Enabled, Disabled, Absent, Unknown }
 
     private suspend fun overlayState(target: AppTarget): OverlayState {
-        val shell = gate.service()?.let(::ShizukuShell) ?: return OverlayState.Unknown
+        val shell = gate.shell() ?: return OverlayState.Unknown
         val r = shell.exec("cmd overlay list ${Shell.quote(target.packageName)}")
         if (!r.ok) return OverlayState.Unknown
         val line = r.stdout.lines().firstOrNull { it.contains(overlayName(target)) } ?: return OverlayState.Absent
@@ -126,6 +125,8 @@ class FabricatedOverlayApplyEngine(
 
     companion object {
         const val ID = "fabricated-overlay"
+        private const val HELPER_UNAVAILABLE =
+            "IconShift's Shizuku helper process didn't start (this method needs it; see the log)"
         private const val SETTLE_MS = 1_500L
     }
 }

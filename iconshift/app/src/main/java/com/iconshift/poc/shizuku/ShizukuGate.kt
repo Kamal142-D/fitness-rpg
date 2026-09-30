@@ -79,7 +79,13 @@ class ShizukuGate(private val context: Context) : ShellAccess {
         Status.Ready -> emptyList()
     }
 
-    override suspend fun shell(): PrivilegedShell? = service()?.let(::ShizukuShell)
+    private val processShell = ShizukuProcessShell()
+
+    /**
+     * Shell commands run straight in Shizuku's process ([ShizukuProcessShell]); no helper process of
+     * ours has to start, which the user service failed to do on HyperOS 3.
+     */
+    override suspend fun shell(): PrivilegedShell? = if (computeStatus() == Status.Ready) processShell else null
 
     /** Connected privileged service, binding it on first use. Null if Shizuku isn't ready. */
     suspend fun service(): IPrivilegedService? {
@@ -94,6 +100,12 @@ class ShizukuGate(private val context: Context) : ShellAccess {
             if (s == null) {
                 lastBindFailureAt = System.currentTimeMillis()
                 onEvent("Shizuku service did not start within ${BIND_TIMEOUT_MS / 1000}s")
+                // Pull the reason from the system log (as shell) so it lands in the report.
+                runCatching {
+                    processShell.exec(
+                        "logcat -d -t 800 2>&1 | grep -iE 'iconshift|userservice|shizuku|app_process' | tail -30",
+                    ).stdout.trim()
+                }.getOrNull()?.takeIf { it.isNotEmpty() }?.let { onEvent("System log around the service start:\n$it") }
             } else {
                 val uid = runCatching { s.uid() }.getOrNull()
                 onEvent("Shizuku service connected in ${System.currentTimeMillis() - started} ms (uid $uid)")
