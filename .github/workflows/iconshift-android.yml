@@ -11,6 +11,11 @@ on:
       - ".github/workflows/iconshift-android.yml"
   workflow_dispatch:
 
+# One build per branch at a time, so two runs never race on the rolling prerelease.
+concurrency:
+  group: iconshift-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -34,6 +34,7 @@ import com.iconshift.poc.device.ThemeManagerProbe
 import com.iconshift.poc.shizuku.ShizukuGate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -325,6 +326,8 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
         val index = container.iconPacks.cachedIndex(pkg) ?: return
         searchJob?.cancel()
         searchJob = viewModelScope.launch(Dispatchers.Default) {
+            // Debounce: while typing, only the last query runs (a search itself isn't cancellable mid-scan).
+            delay(SEARCH_DEBOUNCE_MS)
             val results = IconMatcher.search(index, query)
             updatePicker { if (it.query == query) it.copy(results = results) else it }
         }
@@ -515,6 +518,7 @@ class PocViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         private const val DEFAULT_TARGET = "com.whatsapp"
         private const val MAX_LOG = 400
+        private const val SEARCH_DEBOUNCE_MS = 150L
     }
 }
 
